@@ -27,31 +27,47 @@ class DatasetBase:
 
     def sentence_to_idx(self, sent):
         l = []
+        unk_num = 0.0
         for word in sent:
             if word in self.word2idx:
                 l.append(self.word2idx[word])
             else:
                 l.append(special_tokens['<UNK>'])
+                unk_num += 1
+        if unk_num / float(len(sent)) >= 0.4:
+            emp = []
+            return emp
+
         return l
 
     def prep(self, data):
         init = True
         for i in range(len(data)):
             reg = re.findall(r"[\w']+", data[i])
+            if len(reg) == 0: # +++$+++
+                init = True
+                continue
+
             sent = text_to_word_sequence(data[i], lower=True, split=' ')
+            if len(sent) > 20: # too long
+                init = True
+                continue
             idx_list = self.sentence_to_idx(sent)
+            if len(idx_list) == 0: # <UNK> too many
+                init = True
+                continue            
+
             if init:
                 _in = idx_list
                 init = False
-                continue
-            if reg != 0:
+            else:
                 _out = idx_list
                 _rev_in = list(reversed(_in))
                 self.data.append([_rev_in, _out])
                 _in = _out
-            else:
-                init = True
-                continue
+
+        print('original line num:', len(data))
+        print('prep data num: ', len(self.data))
 
 
 class DatasetTrain(DatasetBase):
@@ -119,6 +135,8 @@ class DatasetEval(DatasetBase):
 class DatasetTest(DatasetBase):
     def __init__(self):
         super().__init__()
+        test_data = []
+
     def load_dict(self): # for datasetEval
         with open('word2idx.pkl', 'rb') as handle:
             self.word2idx = pickle.load(handle)
@@ -135,6 +153,15 @@ class DatasetTest(DatasetBase):
             test_data.append(line)
         return test_data
 
+    def prep(self, data):
+        for i in range(len(data)):
+            line = data[i]
+            reg = re.findall(r"[\w']+", line)
+            if len(reg) == 0:
+                continue
+            sent = text_to_word_sequence(line, lower=True, split=" ")
+            _in = self.sentence_to_idx(sent)
+            self.test_data.append(list(reversed(_in)))
 
 datasetTrain = DatasetTrain()
 train_data, eval_data = datasetTrain.build_dict(data_dir, filename, 5)
