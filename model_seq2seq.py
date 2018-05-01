@@ -12,6 +12,7 @@ import math
 from colors import *
 from tqdm import *
 from handler import Batch, DatasetBase, DatasetTrain, DatasetEval, DatasetTest
+import util
 
 FLAGS = None
 
@@ -29,13 +30,14 @@ eval_line_num  =  5000
 # train_line_num = 2840000
 # eval_line_num  =    2478
 
+maximum_iterations = 35 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
 special_tokens_to_word = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
 
 modes = {'train': 0, 'eval': 1, 'test': 2}
 
 class Seq2Seq:
-    def __init__(self, voc, mode, att):
+    def __init__(self, voc, idx2word, mode, att):
         
         self.num_layers     =     2
         self.embedding_size =   250
@@ -44,6 +46,8 @@ class Seq2Seq:
         self.vocab_num      =   voc
         self.with_attention =   att
         self.mode           =  mode
+        self.idx2word   =  idx2word
+
         self.build_model()
         if mode == modes['train']:
             self.build_optimizer()
@@ -59,7 +63,6 @@ class Seq2Seq:
 
     def build_model(self):
         
-        print('start build model...')
         self.encoder_inputs = tf.placeholder(tf.int32, [None, None], name='encoder_inputs')
         self.encoder_inputs_length = tf.placeholder(tf.int32, [None], name='encoder_inputs_length')
 
@@ -94,20 +97,19 @@ class Seq2Seq:
             batch_size = self.batch_size
             decoder_initial_state = decoder_cell.zero_state(batch_size=batch_size, 
                 dtype=tf.float32).clone(cell_state=encoder_state)
-            output_layer = tf.layers.Dense(self.vocab_num, 
+            projection_layer = tf.layers.Dense(self.vocab_num, 
                 kernel_initializer=tf.truncated_normal_initializer(mean=0.0, stddev=0.1))
 
 
             if self.mode == modes['train']:
                 ending = tf.strided_slice(self.decoder_targets, [0, 0], [self.batch_size, -1], [1, 1])
-                decoder_input = tf.concat([tf.fill([self.batch_size, 1], 
-                    special_tokens['<BOS>']), ending], 1)
+                decoder_input = tf.concat([tf.fill([self.batch_size, 1], special_tokens['<BOS>']), ending], 1)
                 decoder_inputs_embedded = tf.nn.embedding_lookup(embedding, decoder_input)
                 training_helper = tf.contrib.seq2seq.TrainingHelper(inputs=decoder_inputs_embedded,
                                                                     sequence_length=self.decoder_targets_length,
                                                                     time_major=False, name='training_helper')
                 training_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=training_helper,
-                      initial_state=decoder_initial_state, output_layer=output_layer)
+                      initial_state=decoder_initial_state, output_layer=projection_layer)
                 decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=training_decoder,
                                                                           impute_finished=True,
                                                                 maximum_iterations=self.max_target_sequence_length)
@@ -125,14 +127,15 @@ class Seq2Seq:
                                                                     start_tokens=start_tokens, end_token=end_token)
                 inference_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=decoding_helper,
                                                                         initial_state=decoder_initial_state,
-                                                                        output_layer=output_layer)
+                                                                        output_layer=projection_layer)
                 decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
-                                                                maximum_iterations=10)
+                                                                maximum_iterations=self.max_target_sequence_length)
 
                 self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_predict_eval = tf.argmax(self.decoder_logits_eval, axis=-1, name='decoder_pred_eval')
                 self.loss = tf.contrib.seq2seq.sequence_loss(logits=self.decoder_logits_eval,
                                                              targets=self.decoder_targets, weights=self.mask)
+                                                             
 
                 self.eval_summary = tf.summary.scalar('evaluation loss', self.loss)
 
@@ -143,9 +146,9 @@ class Seq2Seq:
                                                                     start_tokens=start_tokens, end_token=end_token)
                 inference_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=decoding_helper,
                                                                         initial_state=decoder_initial_state,
-                                                                        output_layer=output_layer)
+                                                                        output_layer=projection_layer)
                 decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
-                                                                maximum_iterations=10)
+                                                                maximum_iterations=maximum_iterations)
 
                 self.decoder_predict_decode = tf.expand_dims(decoder_outputs.sample_id, -1)
         self.saver = tf.train.Saver(tf.global_variables())
@@ -160,33 +163,48 @@ class Seq2Seq:
         self.train_op = optimizer.apply_gradients(zip(clip_gradients, trainable_params))
 
 
-    def train(self, sess, batch, lr):
+    def train(self, sess, batch, lr, print_pred, summary_writer, current_step):
+        run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+
         feed_dict = {self.encoder_inputs: batch.encoder_inputs,
                       self.encoder_inputs_length: batch.encoder_inputs_length,
                       self.decoder_targets: batch.decoder_targets,
                       self.decoder_targets_length: batch.decoder_targets_length,
                       self.batch_size: len(batch.encoder_inputs),
                       self.lr: lr }
-        _, loss, pred, summary = sess.run([self.train_op, self.loss, 
-            self.decoder_predict_train, self.train_summary], feed_dict=feed_dict)
-        return loss, pred, summary
 
-    def eval(self, sess, batch):
+        if print_pred:
+            _, loss, pred, summary = sess.run([self.train_op, self.loss, 
+                self.decoder_predict_train, self.train_summary], feed_dict=feed_dict, options=run_options)
+
+            i = np.random.randint(0, len(batch.encoder_inputs))
+            util.decoder_print(self.idx2word, batch.encoder_inputs[i], batch.encoder_inputs_length[i],
+                batch.decoder_targets[i], batch.decoder_targets_length[i], pred[i], 'yellow')
+            summary_writer.add_summary(summary, global_step=current_step)
+        else:
+            _, loss = sess.run([self.train_op, self.loss], feed_dict=feed_dict)
+
+        return loss, calc_perplexity(loss)
+
+    def eval(self, sess, batch, summary_writer, current_step):
+
         feed_dict = {self.encoder_inputs: batch.encoder_inputs,
                       self.encoder_inputs_length: batch.encoder_inputs_length,
                       self.decoder_targets: batch.decoder_targets,
                       self.decoder_targets_length: batch.decoder_targets_length,
                       self.batch_size: len(batch.encoder_inputs)}
-        loss, pred, summary = sess.run([self.loss, self.decoder_predict_eval, self.eval_summary], feed_dict=feed_dict)
-        return loss, pred, summary
+        
+        loss, pred, summary = sess.run([self.loss, 
+            self.decoder_predict_eval, self.eval_summary], feed_dict=feed_dict)
+        print_num = 3
 
-    # def infer(self, sess, batch):
-    #     feed_dict = {self.encoder_inputs: batch.encoder_inputs,
-    #                   self.encoder_inputs_length: batch.encoder_inputs_length,
-    #                   self.keep_prob_placeholder: 1.0,
-    #                   self.batch_size: len(batch.encoder_inputs)}
-    #     predict = sess.run([self.decoder_predict_decode], feed_dict=feed_dict)
-    #     return predict
+        print_more = np.random.randint(len(batch.encoder_inputs), size=(print_num))
+        for i in print_more:
+            util.decoder_print(self.idx2word, batch.encoder_inputs[i], batch.encoder_inputs_length[i],
+                batch.decoder_targets[i], batch.decoder_targets_length[i], pred[i], 'green')
+        summary_writer.add_summary(summary, global_step=current_step)
+
+        return loss, calc_perplexity(loss)
 
 def calc_perplexity(loss):
     return math.exp(float(loss)) if loss < 300 else float('inf')
@@ -209,14 +227,14 @@ def train():
 
     print('start building train graph...')
     with train_graph.as_default():
-        model = Seq2Seq(voc=datasetTrain.vocab_num, 
+        model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
             mode=modes['train'], att=FLAGS.with_attention)
         init = tf.global_variables_initializer()
     train_sess = tf.Session(graph=train_graph, config=gpu_config)
 
     print('start building eval graph...')
     with eval_graph.as_default():
-        model_eval = Seq2Seq(voc=datasetEval.vocab_num, 
+        model_eval = Seq2Seq(voc=datasetEval.vocab_num, idx2word=datasetEval.idx2word,
             mode=modes['eval'], att=FLAGS.with_attention)
     eval_sess = tf.Session(graph=eval_graph, config=gpu_config)
 
@@ -242,19 +260,33 @@ def train():
         datasetTrain.shuffle_perm()
         num_steps = int( len(datasetTrain.data) / FLAGS.batch_size )
         epo_loss = 0
-        small_epo_loss = 0
 
         for i in range(num_steps):
-            batch = datasetTrain.next_batch(FLAGS.batch_size)
-            loss, pred, summary = model.train(train_sess, batch, lr)
+            batch = datasetTrain.next_batch(FLAGS.batch_size, shuffle=True)
+            print_pred = False
+            if current_step % FLAGS.num_display_steps == 0 and current_step != 0:
+                print_pred = True
+            loss, perp = model.train(train_sess, batch, lr, print_pred, summary_writer, current_step)
+            
+            if current_step % FLAGS.num_saver_steps == 0 and current_step != 0:
+                ckpt_path = model.saver.save(train_sess, ckpts_path, global_step=current_step)
+                print(color("\nSaver saved: " + ckpt_path, fg='white', bg='green', style='bold'))
+                
+                model_eval.saver.restore(eval_sess, ckpt_path)
+                print(color("\n[Eval. Prediction] Epoch " + str(epo) + ", step " + str(i) + "/" \
+                    + str(num_steps) + "......", fg='white', bg='green', style='underline'))
+                batch_eval = datasetEval.next_batch(FLAGS.batch_size, shuffle=True)
+                loss, perp = model_eval.eval(eval_sess, batch_eval, summary_writer, current_step)
             current_step += 1
-
             pbar.set_description("Epoch " + str(epo) + ", step " + str(i) + "/" + str(num_steps) + \
-                ", (Training Loss: " + "{:.4f}".format(loss) + " )" )
+                ", (Training Loss: " + "{:.4f}".format(loss) + ", Perplexity: " + "{:.4f}".format(perp) + ")" )
 
+def test():
+    print('hi')
 
 def main(_):
   if FLAGS.test_mode == False:
+    print(color('remove directory: ' + FLAGS.log_dir, fg='red'))
     if tf.gfile.Exists(FLAGS.log_dir):
       tf.gfile.DeleteRecursively(FLAGS.log_dir)
     tf.gfile.MakeDirs(FLAGS.log_dir)
@@ -275,10 +307,10 @@ if __name__ == '__main__':
     parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4)
     parser.add_argument('-mi', '--min_counts', type=int, default=5)
     parser.add_argument('-e', '--num_epochs', type=int, default=5)
-    parser.add_argument('-b', '--batch_size', type=int, default=2)
+    parser.add_argument('-b', '--batch_size', type=int, default=10)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
-    parser.add_argument('-d', '--num_display_steps', type=int, default=10)
-    parser.add_argument('-ns', '--num_saver_steps', type=int, default=25)
+    parser.add_argument('-d', '--num_display_steps', type=int, default=5)
+    parser.add_argument('-ns', '--num_saver_steps', type=int, default=3)
     parser.add_argument('-s', '--save_dir', type=str, default='save/')    
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
     parser.add_argument('-o', '--output_filename', type=str, default='output.txt')
