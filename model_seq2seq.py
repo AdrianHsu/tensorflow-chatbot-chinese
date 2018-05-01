@@ -151,7 +151,7 @@ class Seq2Seq:
                                                                 maximum_iterations=maximum_iterations)
 
                 self.decoder_predict_decode = tf.expand_dims(decoder_outputs.sample_id, -1)
-        self.saver = tf.train.Saver(tf.global_variables())
+        self.saver = tf.train.Saver(tf.global_variables(), max_to_keep = 3)
 
     def build_optimizer(self):
 
