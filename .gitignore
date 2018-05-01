@@ -1,3 +1,5 @@
+__pycache__
+logs
 data
 .DS_Store
 *.txt

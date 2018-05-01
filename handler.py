@@ -6,17 +6,6 @@ from keras.preprocessing.text import Tokenizer, text_to_word_sequence
 
 np.random.seed(0)
 
-data_dir = './data'
-filename = '/xaa'
-
-TOTAL_LINE_NUM = 50000
-TRAIN_LINE_NUM = 45000
-EVAL_LINE_NUUM =  5000
-
-# filename = '/clr_conversation.txt'
-# TOTAL_LINE_NUM = 2842478
-# TRAIN_LINE_NUM = 2840000
-# EVAL_LINE_NUM  =    2478
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
 special_tokens_to_word = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
 
@@ -124,16 +113,20 @@ class DatasetBase:
         batch.decoder_targets_length = [len(sample[1]) for sample in samples]
 
         max_source_length = max(batch.encoder_inputs_length)
-        max_target_length = max(batch.decoder_targets_length) + 1
+        max_target_length = max(batch.decoder_targets_length)
         for sample in samples:
             source = sample[0]
             pad = [special_tokens['<PAD>']] * (max_source_length - len(source))
             batch.encoder_inputs.append(pad + source)
 
             target = sample[1]
-            target.append(special_tokens['<EOS>'])
-            pad = [special_tokens['<PAD>']] * (max_target_length - len(target))
-            batch.decoder_targets.append(target + pad)
+            if len(target) < max_target_length:
+                eos = [special_tokens['<EOS>']] * 1
+                pad = [special_tokens['<PAD>']] * (max_target_length - len(target) - 1)
+                batch.decoder_targets.append(target + eos + pad)
+            else:
+                pad = []
+                batch.decoder_targets.append(target + pad)
 
         return batch
 
@@ -142,7 +135,8 @@ class DatasetTrain(DatasetBase):
     def __init__(self):
         super().__init__()
 
-    def build_dict(self, data_dir, filename, min_count): # for datasetTrain
+    def build_dict(self, data_dir, filename, min_count, 
+                train_line_num, eval_line_num): # for datasetTrain
 
         file_path = data_dir + filename
         file = open(file_path, 'r')
@@ -152,15 +146,19 @@ class DatasetTrain(DatasetBase):
         eval_data = []
         cnt = 0
         for line in file:
-            if cnt < TRAIN_LINE_NUM:
+            if cnt < train_line_num:
                 train_data.append(line)
-            else:
+            else: 
                 eval_data.append(line)
             cnt += 1
             reg = re.findall(r"[\w']+", line)
             if len(reg) == 0:
                 continue
             raw_line.append(line)
+        
+        assert len(train_data) == train_line_num
+        assert len(eval_data)  == eval_line_num
+
         tokenizer = Tokenizer(lower=True, split=' ')
         tokenizer.fit_on_texts(raw_line)
 
@@ -232,15 +230,5 @@ class DatasetTest(DatasetBase):
             self.test_data.append(list(reversed(_in)))
 
         print('test data num: ', len(self.test_data))
-
-datasetTrain = DatasetTrain()
-train_data, eval_data = datasetTrain.build_dict(data_dir, filename, 5)
-datasetTrain.prep(train_data)
-datasetEval = DatasetEval()
-datasetEval.load_dict()
-datasetEval.prep(eval_data)
-
-batch = datasetTrain.next_batch(5)
-batch.print()
 
 
