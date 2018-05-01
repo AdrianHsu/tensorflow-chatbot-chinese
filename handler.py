@@ -2,7 +2,7 @@ import os
 import numpy as mp
 import pickle
 import re
-from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.text import Tokenizer, text_to_word_sequence
 
 data_dir = './data'
 filename = '/xaa'
@@ -15,15 +15,48 @@ EVAL_LINE_NUUM =  5000
 # TOTAL_LINE_NUM = 2842478
 # TRAIN_LINE_NUM = 2840000
 # EVAL_LINE_NUM  =    2478
-
+special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
 special_tokens_to_word = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
 
-class Dataset:
+class DatasetBase:
     def __init__(self):
         self.vocab_num = 0
         self.word2idx = {}
         self.idx2word = {}
+        self.data = []
 
+    def sentence_to_idx(self, sent):
+        l = []
+        for word in sent:
+            if word in self.word2idx:
+                l.append(self.word2idx[word])
+            else:
+                l.append(special_tokens['<UNK>'])
+        return l
+
+    def prep(self, data):
+        init = True
+        for i in range(len(data)):
+            reg = re.findall(r"[\w']+", data[i])
+            sent = text_to_word_sequence(data[i], lower=True, split=' ')
+            idx_list = self.sentence_to_idx(sent)
+            if init:
+                _in = idx_list
+                init = False
+                continue
+            if reg != 0:
+                _out = idx_list
+                _rev_in = list(reversed(_in))
+                self.data.append([_rev_in, _out])
+                _in = _out
+            else:
+                init = True
+                continue
+
+
+class DatasetTrain(DatasetBase):
+    def __init__(self):
+        super().__init__()
 
     def build_dict(self, data_dir, filename, min_count): # for datasetTrain
 
@@ -73,7 +106,9 @@ class Dataset:
             pickle.dump(self.idx2word, handle)
 
         return train_data, eval_data
-
+class DatasetEval(DatasetBase):
+    def __init__(self):
+        super().__init__()
     def load_dict(self): # for datasetEval
         with open('word2idx.pkl', 'rb') as handle:
             self.word2idx = pickle.load(handle)
@@ -81,11 +116,31 @@ class Dataset:
             self.idx2word = pickle.load(handle)
 
         self.vocab_num = len(self.word2idx)
+class DatasetTest(DatasetBase):
+    def __init__(self):
+        super().__init__()
+    def load_dict(self): # for datasetEval
+        with open('word2idx.pkl', 'rb') as handle:
+            self.word2idx = pickle.load(handle)
+        with open('idx2word.pkl', 'rb') as handle:
+            self.idx2word = pickle.load(handle)
 
-dataset = Dataset()
-train_data, eval_data = dataset.build_dict(data_dir, filename, 5)
+        self.vocab_num = len(self.word2idx)
+    def load_test_line(self, data_dir, filename):
+        file_path = data_dir + filename
+        file = open(file_path, 'r')
 
-print(len(train_data))
-print(len(eval_data))
+        test_data = []
+        for line in file:
+            test_data.append(line)
+        return test_data
+
+
+datasetTrain = DatasetTrain()
+train_data, eval_data = datasetTrain.build_dict(data_dir, filename, 5)
+datasetTrain.prep(train_data)
+datasetEval = DatasetEval()
+datasetEval.load_dict()
+datasetEval.prep(eval_data)
 
 
