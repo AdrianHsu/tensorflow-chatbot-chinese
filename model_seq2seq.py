@@ -20,15 +20,16 @@ random.seed(0)
 np.random.seed(0)
 tf.set_random_seed(0)
 
-filename = '/xaa'
-total_line_num = 50000
-train_line_num = 45000
-eval_line_num  =  5000
+#filename = '/xaa'
+#total_line_num = 5000
+#train_line_num = 4500
+#eval_line_num  =  500
 
-# filename = '/clr_conversation.txt'
-# total_line_num = 2842478
-# train_line_num = 2840000
-# eval_line_num  =    2478
+filename = '/clr_conversation.txt'
+total_line_num = 2842478
+train_line_num = 2840000
+eval_line_num  =    2478
+PKL_EXIST      =    True
 
 maximum_iterations = 35 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -129,13 +130,12 @@ class Seq2Seq:
                                                                         initial_state=decoder_initial_state,
                                                                         output_layer=projection_layer)
                 decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
-                                                                maximum_iterations=self.max_target_sequence_length)
+                                                                maximum_iterations=maximum_iterations)
 
                 self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_predict_eval = tf.argmax(self.decoder_logits_eval, axis=-1, name='decoder_pred_eval')
                 self.loss = tf.contrib.seq2seq.sequence_loss(logits=self.decoder_logits_eval,
                                                              targets=self.decoder_targets, weights=self.mask)
-                                                             
 
                 self.eval_summary = tf.summary.scalar('evaluation loss', self.loss)
 
@@ -193,7 +193,6 @@ class Seq2Seq:
                       self.decoder_targets: batch.decoder_targets,
                       self.decoder_targets_length: batch.decoder_targets_length,
                       self.batch_size: len(batch.encoder_inputs)}
-        
         loss, pred, summary = sess.run([self.loss, 
             self.decoder_predict_eval, self.eval_summary], feed_dict=feed_dict)
         print_num = 3
@@ -211,9 +210,10 @@ def calc_perplexity(loss):
 
 def train():
     datasetTrain = DatasetTrain()
+    print('start build dict...')
     train_data, eval_data = datasetTrain.build_dict(FLAGS.data_dir, filename, 
-        FLAGS.min_counts, train_line_num, eval_line_num)
-
+        FLAGS.min_counts, train_line_num, eval_line_num, PKL_EXIST)
+    print('build dict done!')
     datasetTrain.prep(train_data)
     datasetEval = DatasetEval()
     datasetEval.load_dict()
@@ -305,19 +305,19 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4)
-    parser.add_argument('-mi', '--min_counts', type=int, default=5)
-    parser.add_argument('-e', '--num_epochs', type=int, default=5)
-    parser.add_argument('-b', '--batch_size', type=int, default=10)
+    parser.add_argument('-mi', '--min_counts', type=int, default=100)
+    parser.add_argument('-e', '--num_epochs', type=int, default=10)
+    parser.add_argument('-b', '--batch_size', type=int, default=250)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
-    parser.add_argument('-d', '--num_display_steps', type=int, default=5)
-    parser.add_argument('-ns', '--num_saver_steps', type=int, default=3)
-    parser.add_argument('-s', '--save_dir', type=str, default='save/')    
+    parser.add_argument('-d', '--num_display_steps', type=int, default=10)
+    parser.add_argument('-ns', '--num_saver_steps', type=int, default=25)
+    parser.add_argument('-s', '--save_dir', type=str, default='save/')
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
     parser.add_argument('-o', '--output_filename', type=str, default='output.txt')
     parser.add_argument('-lo', '--load_saver', type=int, default=0)
     parser.add_argument('-at', '--with_attention', type=int, default=1)
     parser.add_argument('--data_dir', type=str, 
-        default=('./data')
+        default=('/home/data/mlds_hw2_2_data')
     )
     parser.add_argument('--test_dir', type=str, 
         default=('/home/data/mlds_hw2_2_data')

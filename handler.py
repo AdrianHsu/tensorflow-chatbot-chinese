@@ -64,7 +64,7 @@ class DatasetBase:
             idx_list = self.sentence_to_idx(sent)
             if len(idx_list) == 0: # <UNK> too many
                 init = True
-                continue            
+                continue
 
             if init:
                 _in = idx_list
@@ -133,13 +133,21 @@ class DatasetBase:
 
         return batch
 
+    def load_dict(self): # for datasetEval
+        with open('word2idx.pkl', 'rb') as handle:
+            self.word2idx = pickle.load(handle)
+        with open('idx2word.pkl', 'rb') as handle:
+            self.idx2word = pickle.load(handle)
+
+        self.vocab_num = len(self.word2idx)
 
 class DatasetTrain(DatasetBase):
     def __init__(self):
         super().__init__()
-
-    def build_dict(self, data_dir, filename, min_count, 
-                train_line_num, eval_line_num): # for datasetTrain
+        
+    def build_dict(self, data_dir, filename, min_count,
+                train_line_num, eval_line_num, PKL_EXIST=False):
+        # for datasetTrain
 
         file_path = data_dir + filename
         file = open(file_path, 'r')
@@ -161,6 +169,10 @@ class DatasetTrain(DatasetBase):
         
         assert len(train_data) == train_line_num
         assert len(eval_data)  == eval_line_num
+        if PKL_EXIST:
+            print('dict already exists, loading...')
+            self.load_dict()
+            return train_data, eval_data
 
         tokenizer = Tokenizer(lower=True, split=' ')
         tokenizer.fit_on_texts(raw_line)
@@ -194,25 +206,12 @@ class DatasetTrain(DatasetBase):
 class DatasetEval(DatasetBase):
     def __init__(self):
         super().__init__()
-    def load_dict(self): # for datasetEval
-        with open('word2idx.pkl', 'rb') as handle:
-            self.word2idx = pickle.load(handle)
-        with open('idx2word.pkl', 'rb') as handle:
-            self.idx2word = pickle.load(handle)
 
-        self.vocab_num = len(self.word2idx)
 class DatasetTest(DatasetBase):
     def __init__(self):
         super().__init__()
         test_data = []
 
-    def load_dict(self): # for datasetEval
-        with open('word2idx.pkl', 'rb') as handle:
-            self.word2idx = pickle.load(handle)
-        with open('idx2word.pkl', 'rb') as handle:
-            self.idx2word = pickle.load(handle)
-
-        self.vocab_num = len(self.word2idx)
     def load_test_line(self, data_dir, filename):
         file_path = data_dir + filename
         file = open(file_path, 'r')
