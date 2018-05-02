@@ -20,16 +20,16 @@ random.seed(0)
 np.random.seed(0)
 tf.set_random_seed(0)
 
-filename = '/xaa'
-total_line_num = 500000
-train_line_num = 499000
-eval_line_num  =   1000
+#filename = '/xaa'
+#total_line_num = 500000
+#train_line_num = 499000
+#eval_line_num  =   1000
 
-#filename = '/clr_conversation.txt'
-#total_line_num = 2842478
-#train_line_num = 2840000
-#eval_line_num  =    2478
-PKL_EXIST      =    False
+filename = '/clr_conversation.txt'
+total_line_num = 2842478
+train_line_num = 2840000
+eval_line_num  =    2478
+PKL_EXIST      =   False
 
 maximum_iterations = 35 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -38,12 +38,13 @@ special_tokens_to_word = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
 modes = {'train': 0, 'eval': 1, 'test': 2}
 
 class Seq2Seq:
-    def __init__(self, voc, idx2word, mode, att):
+    def __init__(self, voc, idx2word, mode, att, lr = 1e-3):
 
         self.num_layers     =     2
         self.embedding_size =   250
-        self.rnn_size       =   128
+        self.rnn_size       =  1024
         self.keep_prob      =   1.0
+        self.lr             =    lr
         self.vocab_num      =   voc
         self.with_attention =   att
         self.mode           =  mode
@@ -152,21 +153,19 @@ class Seq2Seq:
 
     def build_optimizer(self):
 
-        self.lr = tf.placeholder(tf.int32, [], name='lr')
         optimizer = tf.train.AdamOptimizer(self.lr)
         trainable_params = tf.trainable_variables()
         gradients = tf.gradients(self.train_loss, trainable_params)
         clip_gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
         self.train_op = optimizer.apply_gradients(zip(clip_gradients, trainable_params))
 
-    def train(self, sess, batch, lr, print_pred, summary_writer, current_step):
+    def train(self, sess, batch, print_pred, summary_writer, current_step):
 
         feed_dict = {self.encoder_inputs: batch.encoder_inputs,
                       self.encoder_inputs_length: batch.encoder_inputs_length,
                       self.decoder_targets: batch.decoder_targets,
                       self.decoder_targets_length: batch.decoder_targets_length,
-                      self.batch_size: len(batch.encoder_inputs),
-                      self.lr: lr }
+                      self.batch_size: len(batch.encoder_inputs)}
 
         if print_pred:
             run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
@@ -224,7 +223,7 @@ def train():
     print('start building train graph...')
     with train_graph.as_default():
         model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
-            mode=modes['train'], att=FLAGS.with_attention)
+            mode=modes['train'], att=FLAGS.with_attention, lr=FLAGS.learning_rate)
         model.build_model()
         model.build_optimizer()
         model.saver = tf.train.Saver(max_to_keep = 3)
@@ -267,7 +266,7 @@ def train():
             print_pred = False
             if current_step % FLAGS.num_display_steps == 0 and current_step != 0:
                 print_pred = True
-            loss, perp = model.train(train_sess, batch, lr, print_pred, summary_writer, current_step)
+            loss, perp = model.train(train_sess, batch, print_pred, summary_writer, current_step)
             
             if current_step % FLAGS.num_saver_steps == 0 and current_step != 0:
                 ckpt_path = model.saver.save(train_sess, ckpts_path, global_step=current_step)
