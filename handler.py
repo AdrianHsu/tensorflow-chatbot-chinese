@@ -124,9 +124,8 @@ class DatasetBase:
 
             target = sample[1]
             if len(target) < max_target_length:
-                eos = [special_tokens['<EOS>']] * 1
-                pad = [special_tokens['<PAD>']] * (max_target_length - len(target) - 1)
-                batch.decoder_targets.append(target + eos + pad)
+                pad = [special_tokens['<PAD>']] * (max_target_length - len(target))
+                batch.decoder_targets.append(target + pad)
             else:
                 pad = []
                 batch.decoder_targets.append(target + pad)

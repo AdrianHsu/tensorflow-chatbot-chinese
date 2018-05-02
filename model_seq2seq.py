@@ -129,7 +129,7 @@ class Seq2Seq:
 
             elif self.mode == modes['eval']:
                 start_tokens = tf.ones([self.batch_size, ], tf.int32) # * special_tokens['<BOS>']
-                end_token = special_tokens['<EOS>']
+                end_token = special_tokens['<PAD>']
                 decoding_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(embedding=embedding,
                                                                     start_tokens=start_tokens, end_token=end_token)
                 inference_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=decoding_helper,
@@ -146,7 +146,7 @@ class Seq2Seq:
 
             elif self.mode == modes['test']:
                 start_tokens = tf.ones([self.batch_size, ], tf.int32) # * special_tokens['<BOS>']
-                end_token = special_tokens['<EOS>']
+                end_token = special_tokens['<PAD>']
                 decoding_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(embedding=embedding,
                                                                     start_tokens=start_tokens, end_token=end_token)
                 inference_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=decoding_helper,
