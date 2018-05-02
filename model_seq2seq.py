@@ -22,8 +22,8 @@ tf.set_random_seed(0)
 
 #filename = '/xaa'
 #total_line_num = 50000
-#train_line_num = 49000
-#eval_line_num  =  1000
+#train_line_num = 45000
+#eval_line_num  =  5000
 
 filename = '/clr_conversation.txt'
 total_line_num = 2842478
@@ -73,7 +73,6 @@ class Seq2Seq:
         self.sampling_prob = tf.placeholder(tf.float32, [], name='sampling_prob')
 
 
-        # should add 1 ???
         self.max_target_sequence_length = tf.reduce_max(self.decoder_targets_length, name='max_target_len')
         self.mask = tf.sequence_mask(self.decoder_targets_length, self.max_target_sequence_length, 
             dtype=tf.float32, name='masks')
@@ -129,7 +128,7 @@ class Seq2Seq:
 
             elif self.mode == modes['eval']:
                 start_tokens = tf.ones([self.batch_size, ], tf.int32) # * special_tokens['<BOS>']
-                end_token = special_tokens['<PAD>']
+                end_token = special_tokens['<EOS>']
                 decoding_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(embedding=embedding,
                                                                     start_tokens=start_tokens, end_token=end_token)
                 inference_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=decoding_helper,
@@ -137,25 +136,22 @@ class Seq2Seq:
                                                                         output_layer=projection_layer)
                 decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
                                                                 maximum_iterations=self.max_target_sequence_length)
-                self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
+                # pad to same shape in order to calculate loss
+                pad_decoder_targets = tf.identity(self.decoder_targets)
+                pad_rnn_output = tf.identity(decoder_outputs.rnn_output)
+                pad = tf.zeros([batch_size, tf.shape(pad_decoder_targets)[1] - tf.shape(pad_rnn_output)[1],
+                    self.vocab_num], dtype=tf.float32)
+                pad_rnn_output = tf.concat([pad_rnn_output, pad], axis=1)
+                
+                #self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
+                self.decoder_logits_eval = tf.identity(pad_rnn_output)
                 self.decoder_predict_eval = tf.argmax(self.decoder_logits_eval, axis=-1, name='decoder_pred_eval')
-                self.eval_loss = tf.contrib.seq2seq.sequence_loss(logits=self.decoder_logits_eval,
-                                                             targets=self.decoder_targets, weights=self.mask)
+                self.eval_loss = tf.contrib.seq2seq.sequence_loss(logits=pad_rnn_output,
+                                                             targets=pad_decoder_targets, weights=self.mask)
 
                 self.eval_summary = tf.summary.scalar('evaluation loss', self.eval_loss)
 
-            elif self.mode == modes['test']:
-                start_tokens = tf.ones([self.batch_size, ], tf.int32) # * special_tokens['<BOS>']
-                end_token = special_tokens['<PAD>']
-                decoding_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(embedding=embedding,
-                                                                    start_tokens=start_tokens, end_token=end_token)
-                inference_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=decoding_helper,
-                                                                        initial_state=decoder_initial_state,
-                                                                        output_layer=projection_layer)
-                decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
-                                                                maximum_iterations=max_sentence_length)
-
-                self.decoder_predict_decode = tf.expand_dims(decoder_outputs.sample_id, -1)
+#            elif self.mode == modes['test']:
 
     def build_optimizer(self):
 
@@ -321,7 +317,7 @@ if __name__ == '__main__':
     parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4)
     parser.add_argument('-mi', '--min_counts', type=int, default=25)
     parser.add_argument('-e', '--num_epochs', type=int, default=50)
-    parser.add_argument('-b', '--batch_size', type=int, default=250)
+    parser.add_argument('-b', '--batch_size', type=int, default=10)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=20)
     parser.add_argument('-ns', '--num_saver_steps', type=int, default=50)
