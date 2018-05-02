@@ -21,9 +21,9 @@ np.random.seed(0)
 tf.set_random_seed(0)
 
 #filename = '/xaa'
-#total_line_num = 500000
-#train_line_num = 499000
-#eval_line_num  =   1000
+#total_line_num = 50000
+#train_line_num = 49000
+#eval_line_num  =  1000
 
 filename = '/clr_conversation.txt'
 total_line_num = 2842478
