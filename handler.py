@@ -17,7 +17,7 @@ class Batch:
         self.decoder_targets = []
         self.decoder_targets_length = []
     
-    def print(self): # debug
+    def printBatch(self): # debug
         for i in range(self.batch_size):
             print(self.encoder_inputs[i])
             print(self.encoder_inputs_length[i])
@@ -72,6 +72,8 @@ class DatasetBase:
             else:
                 _out = idx_list
                 _rev_in = list(reversed(_in))
+                assert len(_rev_in) != 0
+                assert len(_out) != 0
                 self.data.append([_rev_in, _out])
                 _in = _out
             if i % 100000 == 0:
@@ -101,11 +103,9 @@ class DatasetBase:
         else:
             right = batch_size - (max_size - ptr)
             if shuffle:
-                d_list = np.append(self.data[self.perm[ptr:max_size]], 
-                                   self.data[self.perm[0:right]])
+                d_list = np.concatenate((self.data[self.perm[ptr:max_size]] , self.data[self.perm[0:right]]), axis=0)
             else:
-                d_list = np.append(self.data[ptr:max_size], 
-                                   self.data[0:right])
+                d_list = np.concatenate((self.data[ptr:max_size] , self.data[0:right]), axis=0)
             self.ptr = right
 
         return self.create_batch(d_list, batch_size)
@@ -114,7 +114,6 @@ class DatasetBase:
         batch = Batch(batch_size)
         batch.encoder_inputs_length = [len(sample[0]) for sample in samples]
         batch.decoder_targets_length = [len(sample[1]) for sample in samples]
-
         max_source_length = max(batch.encoder_inputs_length)
         max_target_length = max(batch.decoder_targets_length)
         for sample in samples:
@@ -203,6 +202,7 @@ class DatasetTrain(DatasetBase):
             pickle.dump(self.idx2word, handle)
 
         return train_data, eval_data
+
 class DatasetEval(DatasetBase):
     def __init__(self):
         super().__init__()

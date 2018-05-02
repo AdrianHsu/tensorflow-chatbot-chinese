@@ -20,16 +20,16 @@ random.seed(0)
 np.random.seed(0)
 tf.set_random_seed(0)
 
-#filename = '/xaa'
-#total_line_num = 5000
-#train_line_num = 4500
-#eval_line_num  =  500
+filename = '/xaa'
+total_line_num = 500000
+train_line_num = 499000
+eval_line_num  =   1000
 
-filename = '/clr_conversation.txt'
-total_line_num = 2842478
-train_line_num = 2840000
-eval_line_num  =    2478
-PKL_EXIST      =    True
+#filename = '/clr_conversation.txt'
+#total_line_num = 2842478
+#train_line_num = 2840000
+#eval_line_num  =    2478
+PKL_EXIST      =    False
 
 maximum_iterations = 35 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -117,9 +117,9 @@ class Seq2Seq:
                 self.decoder_logits_train = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_predict_train = tf.argmax(self.decoder_logits_train, axis=-1, name='decoder_pred_train')
 
-                self.loss = tf.contrib.seq2seq.sequence_loss(logits=self.decoder_logits_train,
+                self.train_loss = tf.contrib.seq2seq.sequence_loss(logits=self.decoder_logits_train,
                                                              targets=self.decoder_targets, weights=self.mask)
-                self.train_summary = tf.summary.scalar('training loss', self.loss)
+                self.train_summary = tf.summary.scalar('training loss', self.train_loss)
 
             elif self.mode == modes['eval']:
                 start_tokens = tf.ones([self.batch_size, ], tf.int32) # * special_tokens['<BOS>']
@@ -130,14 +130,14 @@ class Seq2Seq:
                                                                         initial_state=decoder_initial_state,
                                                                         output_layer=projection_layer)
                 decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
-                                                                maximum_iterations=maximum_iterations)
+                                                                maximum_iterations=self.max_target_sequence_length)
 
                 self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_predict_eval = tf.argmax(self.decoder_logits_eval, axis=-1, name='decoder_pred_eval')
-                self.loss = tf.contrib.seq2seq.sequence_loss(logits=self.decoder_logits_eval,
+                self.eval_loss = tf.contrib.seq2seq.sequence_loss(logits=self.decoder_logits_eval,
                                                              targets=self.decoder_targets, weights=self.mask)
 
-                self.eval_summary = tf.summary.scalar('evaluation loss', self.loss)
+                self.eval_summary = tf.summary.scalar('evaluation loss', self.eval_loss)
 
             elif self.mode == modes['test']:
                 start_tokens = tf.ones([self.batch_size, ], tf.int32) # * special_tokens['<BOS>']
@@ -158,7 +158,7 @@ class Seq2Seq:
         self.lr = tf.placeholder(tf.int32, [], name='lr')
         optimizer = tf.train.AdamOptimizer(self.lr)
         trainable_params = tf.trainable_variables()
-        gradients = tf.gradients(self.loss, trainable_params)
+        gradients = tf.gradients(self.train_loss, trainable_params)
         clip_gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
         self.train_op = optimizer.apply_gradients(zip(clip_gradients, trainable_params))
 
@@ -174,7 +174,7 @@ class Seq2Seq:
                       self.lr: lr }
 
         if print_pred:
-            _, loss, pred, summary = sess.run([self.train_op, self.loss, 
+            _, loss, pred, summary = sess.run([self.train_op, self.train_loss, 
                 self.decoder_predict_train, self.train_summary], feed_dict=feed_dict, options=run_options)
 
             i = np.random.randint(0, len(batch.encoder_inputs))
@@ -182,7 +182,7 @@ class Seq2Seq:
                 batch.decoder_targets[i], batch.decoder_targets_length[i], pred[i], 'yellow')
             summary_writer.add_summary(summary, global_step=current_step)
         else:
-            _, loss = sess.run([self.train_op, self.loss], feed_dict=feed_dict)
+            _, loss = sess.run([self.train_op, self.train_loss], feed_dict=feed_dict)
 
         return loss, calc_perplexity(loss)
 
@@ -193,7 +193,7 @@ class Seq2Seq:
                       self.decoder_targets: batch.decoder_targets,
                       self.decoder_targets_length: batch.decoder_targets_length,
                       self.batch_size: len(batch.encoder_inputs)}
-        loss, pred, summary = sess.run([self.loss, 
+        loss, pred, summary = sess.run([self.eval_loss, 
             self.decoder_predict_eval, self.eval_summary], feed_dict=feed_dict)
         print_num = 3
 
@@ -306,11 +306,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4)
     parser.add_argument('-mi', '--min_counts', type=int, default=100)
-    parser.add_argument('-e', '--num_epochs', type=int, default=10)
+    parser.add_argument('-e', '--num_epochs', type=int, default=100)
     parser.add_argument('-b', '--batch_size', type=int, default=250)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=10)
-    parser.add_argument('-ns', '--num_saver_steps', type=int, default=25)
+    parser.add_argument('-ns', '--num_saver_steps', type=int, default=3)
     parser.add_argument('-s', '--save_dir', type=str, default='save/')
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
     parser.add_argument('-o', '--output_filename', type=str, default='output.txt')
