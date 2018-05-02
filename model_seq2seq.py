@@ -43,7 +43,7 @@ class Seq2Seq:
         self.num_layers     =     2
         self.embedding_size =   250
         self.rnn_size       =   512
-        self.keep_prob      =   1.0
+        self.keep_prob      =   0.5
         self.lr             =    lr
         self.vocab_num      =   voc
         self.with_attention =   att
