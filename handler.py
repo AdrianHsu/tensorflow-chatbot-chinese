@@ -98,7 +98,6 @@ class DatasetBase:
                 d_list = self.data[self.perm[ptr:(ptr + batch_size)]]
             else:
                 d_list = self.data[ptr:(ptr + batch_size)]
-            
             self.ptr += batch_size
         else:
             right = batch_size - (max_size - ptr)
@@ -129,7 +128,6 @@ class DatasetBase:
             else:
                 pad = []
                 batch.decoder_targets.append(target + pad)
-
         return batch
 
     def load_dict(self): # for datasetEval

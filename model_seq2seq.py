@@ -39,25 +39,22 @@ modes = {'train': 0, 'eval': 1, 'test': 2}
 
 class Seq2Seq:
     def __init__(self, voc, idx2word, mode, att):
-        
+
         self.num_layers     =     2
         self.embedding_size =   250
-        self.rnn_size       =  1024
+        self.rnn_size       =   128
         self.keep_prob      =   1.0
         self.vocab_num      =   voc
         self.with_attention =   att
         self.mode           =  mode
         self.idx2word   =  idx2word
 
-        self.build_model()
-        if mode == modes['train']:
-            self.build_optimizer()
-
     def _create_rnn_cell(self):
 
         def single_rnn_cell():
-            single_cell = tf.contrib.rnn.LSTMCell(self.rnn_size)
-            cell = tf.contrib.rnn.DropoutWrapper(single_cell, output_keep_prob=self.keep_prob)
+            cell = tf.contrib.rnn.LSTMCell(self.rnn_size)
+            if self.mode == modes['train']:
+                cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=self.keep_prob)
             return cell
         cell = tf.contrib.rnn.MultiRNNCell([single_rnn_cell() for _ in range(self.num_layers)])
         return cell
@@ -79,7 +76,8 @@ class Seq2Seq:
 
         with tf.variable_scope('encoder'):
             encoder_cell = self._create_rnn_cell()
-            embedding = tf.get_variable('embedding', [self.vocab_num, self.embedding_size])
+            embedding = tf.get_variable('embedding', [self.vocab_num, self.embedding_size],
+                    initializer=tf.random_normal_initializer(mean=0.0, stddev=0.1))
             encoder_inputs_embedded = tf.nn.embedding_lookup(embedding, self.encoder_inputs)
             encoder_outputs, encoder_state = tf.nn.dynamic_rnn(encoder_cell, encoder_inputs_embedded,
                                                                sequence_length=self.encoder_inputs_length,
@@ -87,6 +85,7 @@ class Seq2Seq:
         with tf.variable_scope('decoder'):
             encoder_inputs_length = self.encoder_inputs_length
             decoder_cell = self._create_rnn_cell()
+            batch_size = self.batch_size
             if self.with_attention:
                 attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(
                     num_units=self.rnn_size, memory=encoder_outputs, 
@@ -94,13 +93,12 @@ class Seq2Seq:
                 decoder_cell = tf.contrib.seq2seq.AttentionWrapper(
                     cell=decoder_cell, attention_mechanism=attention_mechanism,
                     attention_layer_size=self.rnn_size, name='Attention_Wrapper')
-
-            batch_size = self.batch_size
-            decoder_initial_state = decoder_cell.zero_state(batch_size=batch_size, 
-                dtype=tf.float32).clone(cell_state=encoder_state)
-            projection_layer = tf.layers.Dense(self.vocab_num, 
-                kernel_initializer=tf.truncated_normal_initializer(mean=0.0, stddev=0.1))
-
+                decoder_initial_state = decoder_cell.zero_state(batch_size=batch_size, 
+                    dtype=tf.float32).clone(cell_state=encoder_state)
+            else:
+                decoder_initial_state = encoder_state
+            projection_layer = tf.layers.Dense(
+                    self.vocab_num, kernel_initializer=tf.truncated_normal_initializer(mean=0.0, stddev=0.1))
 
             if self.mode == modes['train']:
                 ending = tf.strided_slice(self.decoder_targets, [0, 0], [self.batch_size, -1], [1, 1])
@@ -151,7 +149,6 @@ class Seq2Seq:
                                                                 maximum_iterations=maximum_iterations)
 
                 self.decoder_predict_decode = tf.expand_dims(decoder_outputs.sample_id, -1)
-        self.saver = tf.train.Saver(tf.global_variables(), max_to_keep = 3)
 
     def build_optimizer(self):
 
@@ -162,9 +159,7 @@ class Seq2Seq:
         clip_gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
         self.train_op = optimizer.apply_gradients(zip(clip_gradients, trainable_params))
 
-
     def train(self, sess, batch, lr, print_pred, summary_writer, current_step):
-        run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 
         feed_dict = {self.encoder_inputs: batch.encoder_inputs,
                       self.encoder_inputs_length: batch.encoder_inputs_length,
@@ -174,6 +169,7 @@ class Seq2Seq:
                       self.lr: lr }
 
         if print_pred:
+            run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
             _, loss, pred, summary = sess.run([self.train_op, self.train_loss, 
                 self.decoder_predict_train, self.train_summary], feed_dict=feed_dict, options=run_options)
 
@@ -183,7 +179,6 @@ class Seq2Seq:
             summary_writer.add_summary(summary, global_step=current_step)
         else:
             _, loss = sess.run([self.train_op, self.train_loss], feed_dict=feed_dict)
-
         return loss, calc_perplexity(loss)
 
     def eval(self, sess, batch, summary_writer, current_step):
@@ -196,6 +191,7 @@ class Seq2Seq:
         loss, pred, summary = sess.run([self.eval_loss, 
             self.decoder_predict_eval, self.eval_summary], feed_dict=feed_dict)
         print_num = 3
+       
 
         print_more = np.random.randint(len(batch.encoder_inputs), size=(print_num))
         for i in print_more:
@@ -229,6 +225,9 @@ def train():
     with train_graph.as_default():
         model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
             mode=modes['train'], att=FLAGS.with_attention)
+        model.build_model()
+        model.build_optimizer()
+        model.saver = tf.train.Saver(max_to_keep = 3)
         init = tf.global_variables_initializer()
     train_sess = tf.Session(graph=train_graph, config=gpu_config)
 
@@ -236,6 +235,8 @@ def train():
     with eval_graph.as_default():
         model_eval = Seq2Seq(voc=datasetEval.vocab_num, idx2word=datasetEval.idx2word,
             mode=modes['eval'], att=FLAGS.with_attention)
+        model_eval.build_model()
+        model_eval.saver = tf.train.Saver(max_to_keep = 3)
     eval_sess = tf.Session(graph=eval_graph, config=gpu_config)
 
 
@@ -261,8 +262,8 @@ def train():
         num_steps = int( len(datasetTrain.data) / FLAGS.batch_size )
         epo_loss = 0
 
+        batch = datasetTrain.next_batch(FLAGS.batch_size, shuffle=True)
         for i in range(num_steps):
-            batch = datasetTrain.next_batch(FLAGS.batch_size, shuffle=True)
             print_pred = False
             if current_step % FLAGS.num_display_steps == 0 and current_step != 0:
                 print_pred = True
@@ -276,7 +277,10 @@ def train():
                 print(color("\n[Eval. Prediction] Epoch " + str(epo) + ", step " + str(i) + "/" \
                     + str(num_steps) + "......", fg='white', bg='green', style='underline'))
                 batch_eval = datasetEval.next_batch(FLAGS.batch_size, shuffle=True)
-                loss, perp = model_eval.eval(eval_sess, batch_eval, summary_writer, current_step)
+                loss_eval, perp_eval = model_eval.eval(eval_sess, batch_eval, summary_writer, current_step)
+                print(color("Epoch " + str(epo) + ", step " + str(i) + "/" + str(num_steps) + \
+                 ", (Evaluation Loss: " + "{:.4f}".format(loss_eval) + \
+                 ", Perplexity: " + "{:.4f}".format(perp_eval) + ")", fg='white', bg='green'))
             current_step += 1
             pbar.set_description("Epoch " + str(epo) + ", step " + str(i) + "/" + str(num_steps) + \
                 ", (Training Loss: " + "{:.4f}".format(loss) + ", Perplexity: " + "{:.4f}".format(perp) + ")" )
@@ -309,8 +313,8 @@ if __name__ == '__main__':
     parser.add_argument('-e', '--num_epochs', type=int, default=100)
     parser.add_argument('-b', '--batch_size', type=int, default=250)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
-    parser.add_argument('-d', '--num_display_steps', type=int, default=10)
-    parser.add_argument('-ns', '--num_saver_steps', type=int, default=3)
+    parser.add_argument('-d', '--num_display_steps', type=int, default=20)
+    parser.add_argument('-ns', '--num_saver_steps', type=int, default=50)
     parser.add_argument('-s', '--save_dir', type=str, default='save/')
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
     parser.add_argument('-o', '--output_filename', type=str, default='output.txt')
