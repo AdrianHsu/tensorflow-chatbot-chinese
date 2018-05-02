@@ -90,6 +90,7 @@ class Seq2Seq:
             decoder_cell = self._create_rnn_cell()
             batch_size = self.batch_size
             if self.with_attention:
+                print('wrapped with bahdanau attention...')
                 attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(
                     num_units=self.rnn_size, memory=encoder_outputs, 
                     memory_sequence_length=encoder_inputs_length)
@@ -128,7 +129,7 @@ class Seq2Seq:
 
             elif self.mode == modes['eval']:
                 start_tokens = tf.ones([self.batch_size, ], tf.int32) # * special_tokens['<BOS>']
-                end_token = special_tokens['<EOS>']
+                end_token = special_tokens['<PAD>']
                 decoding_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(embedding=embedding,
                                                                     start_tokens=start_tokens, end_token=end_token)
                 inference_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=decoding_helper,
@@ -139,9 +140,9 @@ class Seq2Seq:
                 # pad to same shape in order to calculate loss
                 pad_decoder_targets = tf.identity(self.decoder_targets)
                 pad_rnn_output = tf.identity(decoder_outputs.rnn_output)
-                pad = tf.zeros([batch_size, tf.shape(pad_decoder_targets)[1] - tf.shape(pad_rnn_output)[1],
-                    self.vocab_num], dtype=tf.float32)
-                pad_rnn_output = tf.concat([pad_rnn_output, pad], axis=1)
+                #pad = tf.zeros([batch_size, tf.shape(pad_decoder_targets)[1] - tf.shape(pad_rnn_output)[1],
+                #    self.vocab_num], dtype=tf.float32)
+                #pad_rnn_output = tf.concat([pad_rnn_output, pad], axis=1)
                 
                 #self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_logits_eval = tf.identity(pad_rnn_output)
@@ -317,10 +318,10 @@ if __name__ == '__main__':
     parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4)
     parser.add_argument('-mi', '--min_counts', type=int, default=25)
     parser.add_argument('-e', '--num_epochs', type=int, default=50)
-    parser.add_argument('-b', '--batch_size', type=int, default=10)
+    parser.add_argument('-b', '--batch_size', type=int, default=100)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
-    parser.add_argument('-d', '--num_display_steps', type=int, default=20)
-    parser.add_argument('-ns', '--num_saver_steps', type=int, default=50)
+    parser.add_argument('-d', '--num_display_steps', type=int, default=30)
+    parser.add_argument('-ns', '--num_saver_steps', type=int, default=70)
     parser.add_argument('-s', '--save_dir', type=str, default='save/')
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
     parser.add_argument('-o', '--output_filename', type=str, default='output.txt')
