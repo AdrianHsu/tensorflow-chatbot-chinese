@@ -3,6 +3,12 @@ from colors import *
 
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
 
+def inv_sigmoid(num_epo):
+    x = np.arange(-1.0, 2.0, (3.0/num_epo))
+    y = 1 / (1 + np.e**x)
+    print(y)
+    return y
+
 def decoder_print(idx2word, _in, _len_in, _out, _len_out, pred, my_color):
 
     _in = list(reversed(_in))

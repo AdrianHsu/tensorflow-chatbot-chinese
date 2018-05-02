@@ -31,7 +31,7 @@ train_line_num = 2840000
 eval_line_num  =    2478
 PKL_EXIST      =    True
 
-maximum_iterations = 35 # longest
+max_sentence_length = 35 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
 special_tokens_to_word = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
 
@@ -42,7 +42,7 @@ class Seq2Seq:
 
         self.num_layers     =     2
         self.embedding_size =   250
-        self.rnn_size       =   512
+        self.rnn_size       =   500
         self.keep_prob      =   0.5
         self.lr             =    lr
         self.vocab_num      =   voc
@@ -53,9 +53,10 @@ class Seq2Seq:
     def _create_rnn_cell(self):
 
         def single_rnn_cell():
-            cell = tf.contrib.rnn.LSTMCell(self.rnn_size)
+            cell = tf.contrib.rnn.LSTMCell(self.rnn_size, initializer = tf.orthogonal_initializer())
             if self.mode == modes['train']:
-                cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=self.keep_prob)
+                cell = tf.contrib.rnn.DropoutWrapper(cell, input_keep_prob=self.keep_prob, 
+                        output_keep_prob=self.keep_prob)
             return cell
         cell = tf.contrib.rnn.MultiRNNCell([single_rnn_cell() for _ in range(self.num_layers)])
         return cell
@@ -69,6 +70,8 @@ class Seq2Seq:
 
         self.decoder_targets = tf.placeholder(tf.int32, [None, None], name='decoder_targets')
         self.decoder_targets_length = tf.placeholder(tf.int32, [None], name='decoder_targets_length')
+        self.sampling_prob = tf.placeholder(tf.float32, [], name='sampling_prob')
+
 
         # should add 1 ???
         self.max_target_sequence_length = tf.reduce_max(self.decoder_targets_length, name='max_target_len')
@@ -105,9 +108,13 @@ class Seq2Seq:
                 ending = tf.strided_slice(self.decoder_targets, [0, 0], [self.batch_size, -1], [1, 1])
                 decoder_input = tf.concat([tf.fill([self.batch_size, 1], special_tokens['<BOS>']), ending], 1)
                 decoder_inputs_embedded = tf.nn.embedding_lookup(embedding, decoder_input)
-                training_helper = tf.contrib.seq2seq.TrainingHelper(inputs=decoder_inputs_embedded,
+                training_helper = tf.contrib.seq2seq.ScheduledEmbeddingTrainingHelper(
+                                                                    inputs=decoder_inputs_embedded,
                                                                     sequence_length=self.decoder_targets_length,
-                                                                    time_major=False, name='training_helper')
+                                                                    embedding=embedding,
+                                                                    time_major=False, 
+                                                                    sampling_probability=self.sampling_prob,
+                                                                    name='training_helper')
                 training_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=training_helper,
                       initial_state=decoder_initial_state, output_layer=projection_layer)
                 decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=training_decoder,
@@ -130,7 +137,6 @@ class Seq2Seq:
                                                                         output_layer=projection_layer)
                 decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
                                                                 maximum_iterations=self.max_target_sequence_length)
-
                 self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_predict_eval = tf.argmax(self.decoder_logits_eval, axis=-1, name='decoder_pred_eval')
                 self.eval_loss = tf.contrib.seq2seq.sequence_loss(logits=self.decoder_logits_eval,
@@ -147,7 +153,7 @@ class Seq2Seq:
                                                                         initial_state=decoder_initial_state,
                                                                         output_layer=projection_layer)
                 decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
-                                                                maximum_iterations=maximum_iterations)
+                                                                maximum_iterations=max_sentence_length)
 
                 self.decoder_predict_decode = tf.expand_dims(decoder_outputs.sample_id, -1)
 
@@ -159,13 +165,14 @@ class Seq2Seq:
         clip_gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
         self.train_op = optimizer.apply_gradients(zip(clip_gradients, trainable_params))
 
-    def train(self, sess, batch, print_pred, summary_writer, current_step):
+    def train(self, sess, batch, print_pred, summary_writer, current_step, prob):
 
         feed_dict = {self.encoder_inputs: batch.encoder_inputs,
                       self.encoder_inputs_length: batch.encoder_inputs_length,
                       self.decoder_targets: batch.decoder_targets,
                       self.decoder_targets_length: batch.decoder_targets_length,
-                      self.batch_size: len(batch.encoder_inputs)}
+                      self.batch_size: len(batch.encoder_inputs),
+                      self.sampling_prob: prob}
 
         if print_pred:
             run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
@@ -251,23 +258,23 @@ def train():
     summary_writer = tf.summary.FileWriter(FLAGS.log_dir + '/train')
     summary_writer.add_graph(train_graph)
     summary_writer.add_graph(eval_graph)
-
-
+    
+    num_steps = int( len(datasetTrain.data) / FLAGS.batch_size )
     pbar = tqdm(range(FLAGS.num_epochs))
     lr = FLAGS.learning_rate
     current_step = 0
+    pt = 0
+    total_samp = FLAGS.num_epochs * 3
+    samp_prob = util.inv_sigmoid(total_samp)
     for epo in pbar:
         datasetTrain.shuffle_perm()
-        num_steps = int( len(datasetTrain.data) / FLAGS.batch_size )
-        epo_loss = 0
 
         for i in range(num_steps):
             batch = datasetTrain.next_batch(FLAGS.batch_size, shuffle=True)
             print_pred = False
             if current_step % FLAGS.num_display_steps == 0 and current_step != 0:
                 print_pred = True
-            loss, perp = model.train(train_sess, batch, print_pred, summary_writer, current_step)
-            
+            loss, perp = model.train(train_sess, batch, print_pred, summary_writer, current_step, samp_prob[pt])
             if current_step % FLAGS.num_saver_steps == 0 and current_step != 0:
                 ckpt_path = model.saver.save(train_sess, ckpts_path, global_step=current_step)
                 print(color("\nSaver saved: " + ckpt_path, fg='white', bg='green', style='bold'))
@@ -282,8 +289,13 @@ def train():
                  ", Perplexity: " + "{:.4f}".format(perp_eval) + ")", fg='white', bg='green'))
             current_step += 1
             pbar.set_description("Epoch " + str(epo) + ", step " + str(i) + "/" + str(num_steps) + \
-                ", (Training Loss: " + "{:.4f}".format(loss) + ", Perplexity: " + "{:.4f}".format(perp) + ")" )
-
+                    ", (Loss: " + "{:.4f}".format(loss) + ", Perplexity: " + "{:.4f}".format(perp) + ", Sampling: "+ \
+                    "{:.4f}".format(samp_prob[pt]) + ")" )
+            if i % int(num_steps / 3) == 0 and i != 0:
+                pt += 1
+                print(color('sampling pt: ' + str( pt ) + '/' + str(total_samp), fg='white', bg='red'))
+        pt += 1
+        print(color('sampling pt: ' + str( pt ) + '/' + str(total_samp), fg='white', bg='red'))
 def test():
     print('hi')
 
@@ -309,7 +321,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4)
     parser.add_argument('-mi', '--min_counts', type=int, default=25)
-    parser.add_argument('-e', '--num_epochs', type=int, default=100)
+    parser.add_argument('-e', '--num_epochs', type=int, default=50)
     parser.add_argument('-b', '--batch_size', type=int, default=250)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=20)
