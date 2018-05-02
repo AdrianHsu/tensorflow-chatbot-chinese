@@ -140,11 +140,11 @@ class Seq2Seq:
                 # pad to same shape in order to calculate loss
                 pad_decoder_targets = tf.identity(self.decoder_targets)
                 pad_rnn_output = tf.identity(decoder_outputs.rnn_output)
-                #pad = tf.zeros([batch_size, tf.shape(pad_decoder_targets)[1] - tf.shape(pad_rnn_output)[1],
-                #    self.vocab_num], dtype=tf.float32)
-                #pad_rnn_output = tf.concat([pad_rnn_output, pad], axis=1)
+                pad = tf.zeros([batch_size, tf.shape(pad_decoder_targets)[1] - tf.shape(pad_rnn_output)[1],
+                    self.vocab_num], dtype=tf.float32)
+                pad_rnn_output = tf.concat([pad_rnn_output, pad], axis=1)
                 
-                #self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
+               #  self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_logits_eval = tf.identity(pad_rnn_output)
                 self.decoder_predict_eval = tf.argmax(self.decoder_logits_eval, axis=-1, name='decoder_pred_eval')
                 self.eval_loss = tf.contrib.seq2seq.sequence_loss(logits=pad_rnn_output,
