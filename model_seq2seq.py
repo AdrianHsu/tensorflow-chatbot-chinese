@@ -29,7 +29,7 @@ filename = '/clr_conversation.txt'
 total_line_num = 2842478
 train_line_num = 2840000
 eval_line_num  =    2478
-PKL_EXIST      =   False
+PKL_EXIST      =    True
 
 maximum_iterations = 35 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -42,7 +42,7 @@ class Seq2Seq:
 
         self.num_layers     =     2
         self.embedding_size =   250
-        self.rnn_size       =  1024
+        self.rnn_size       =   512
         self.keep_prob      =   1.0
         self.lr             =    lr
         self.vocab_num      =   voc
@@ -261,8 +261,8 @@ def train():
         num_steps = int( len(datasetTrain.data) / FLAGS.batch_size )
         epo_loss = 0
 
-        batch = datasetTrain.next_batch(FLAGS.batch_size, shuffle=True)
         for i in range(num_steps):
+            batch = datasetTrain.next_batch(FLAGS.batch_size, shuffle=True)
             print_pred = False
             if current_step % FLAGS.num_display_steps == 0 and current_step != 0:
                 print_pred = True
@@ -308,7 +308,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4)
-    parser.add_argument('-mi', '--min_counts', type=int, default=100)
+    parser.add_argument('-mi', '--min_counts', type=int, default=25)
     parser.add_argument('-e', '--num_epochs', type=int, default=100)
     parser.add_argument('-b', '--batch_size', type=int, default=250)
     parser.add_argument('-t', '--test_mode', type=int, default=0)

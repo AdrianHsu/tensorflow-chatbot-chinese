@@ -137,6 +137,7 @@ class DatasetBase:
             self.idx2word = pickle.load(handle)
 
         self.vocab_num = len(self.word2idx)
+        print('self.vocab_num: ', self.vocab_num)
 
 class DatasetTrain(DatasetBase):
     def __init__(self):
@@ -193,6 +194,7 @@ class DatasetTrain(DatasetBase):
                 cnt += 1
 
         self.vocab_num = len(self.word2idx)
+        print('self.vocab_num: ', self.vocab_num)
 
         with open('word2idx.pkl', 'wb') as handle:
             pickle.dump(self.word2idx, handle)
