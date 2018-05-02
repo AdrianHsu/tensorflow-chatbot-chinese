@@ -71,11 +71,10 @@ class DatasetBase:
                 init = False
             else:
                 _out = idx_list
+                _out.append(special_tokens['<EOS>'])
                 _rev_in = list(reversed(_in))
-                assert len(_rev_in) != 0
-                assert len(_out) != 0
                 self.data.append([_rev_in, _out])
-                _in = _out
+                _in = idx_list
             if i % 100000 == 0:
                 print("building data list: " + str(i) + "/" + str(len(data)) + " done.")
 
@@ -115,7 +114,6 @@ class DatasetBase:
         batch = Batch(batch_size)
         batch.encoder_inputs_length = [len(sample[0]) for sample in samples]
         batch.decoder_targets_length = [len(sample[1]) for sample in samples]
-        #batch.decoder_targets_length = [len(sample[1]) + 1 for sample in samples]
         max_source_length = max(batch.encoder_inputs_length)
         max_target_length = max(batch.decoder_targets_length)
         for sample in samples:
@@ -126,14 +124,6 @@ class DatasetBase:
             target = sample[1]
             pad = [special_tokens['<PAD>']] * (max_target_length - len(target))
             batch.decoder_targets.append( target + pad )
-
-            #if len(target) < max_target_length - 1: # cuz max_target_length has EOS
-            #    eos = [special_tokens['<EOS>']] * 1
-            #    pad = [special_tokens['<PAD>']] * (max_target_length - len(target) - 1)
-            #    batch.decoder_targets.append(target + eos + pad)
-            #else: # len(target) == max_target_length - 1
-            #    eos = [special_tokens['<EOS>']] * 1
-            #    batch.decoder_targets.append(target + eos)
         return batch
 
     def load_dict(self): # for datasetEval
