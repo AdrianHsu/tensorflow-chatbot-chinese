@@ -267,8 +267,7 @@ def train():
     total_samp = FLAGS.num_epochs * 3
     samp_prob = util.inv_sigmoid(total_samp)
     for epo in pbar:
-        datasetTrain.shuffle_perm()
-
+        print(color('start: epoch ' + str(epo), fg='blue', bg='white'))
         for i in range(num_steps):
             batch = datasetTrain.next_batch(FLAGS.batch_size, shuffle=True)
             print_pred = False

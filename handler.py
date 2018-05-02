@@ -100,6 +100,8 @@ class DatasetBase:
                 d_list = self.data[ptr:(ptr + batch_size)]
             self.ptr += batch_size
         else:
+            self.shuffle_perm()
+            print('shuffle perm...')
             right = batch_size - (max_size - ptr)
             if shuffle:
                 d_list = np.concatenate((self.data[self.perm[ptr:max_size]] , self.data[self.perm[0:right]]), axis=0)
