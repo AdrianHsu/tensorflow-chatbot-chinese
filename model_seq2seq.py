@@ -317,7 +317,7 @@ if __name__ == '__main__':
     parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4)
     parser.add_argument('-mi', '--min_counts', type=int, default=25)
     parser.add_argument('-e', '--num_epochs', type=int, default=50)
-    parser.add_argument('-b', '--batch_size', type=int, default=10)
+    parser.add_argument('-b', '--batch_size', type=int, default=500)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=20)
     parser.add_argument('-ns', '--num_saver_steps', type=int, default=50)
@@ -327,7 +327,7 @@ if __name__ == '__main__':
     parser.add_argument('-lo', '--load_saver', type=int, default=0)
     parser.add_argument('-at', '--with_attention', type=int, default=1)
     parser.add_argument('--data_dir', type=str, 
-        default=('/home/data/mlds_hw2_2_data')
+        default=('./data')
     )
     parser.add_argument('--test_dir', type=str, 
         default=('/home/data/mlds_hw2_2_data')
