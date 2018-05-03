@@ -73,7 +73,7 @@ class DatasetBase:
                 _out = idx_list
                 _rev_in = list(reversed(_in))
                 # (the first EOS is part of the loss)
-                self.data.append([_rev_in, _out + [special_tokens['<EOS>']]])
+                self.data.append([_rev_in, _out])
                 _in = idx_list
             if i % 100000 == 0:
                 print("building data list: " + str(i) + "/" + str(len(data)) + " done.")
