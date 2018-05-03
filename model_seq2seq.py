@@ -42,8 +42,8 @@ class Seq2Seq:
 
         self.num_layers     =     2
         self.embedding_size =   250
-        self.rnn_size       =   500
-        self.keep_prob      =   0.5
+        self.rnn_size       =  1024
+        self.keep_prob      =   1.0
         self.lr             =    lr
         self.vocab_num      =   voc
         self.with_attention =   att
@@ -90,6 +90,7 @@ class Seq2Seq:
             decoder_cell = self._create_rnn_cell()
             batch_size = self.batch_size
             if self.with_attention:
+                print('wrapped with bahdanau attention...')
                 attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(
                     num_units=self.rnn_size, memory=encoder_outputs, 
                     memory_sequence_length=encoder_inputs_length)
@@ -143,13 +144,13 @@ class Seq2Seq:
                     self.vocab_num], dtype=tf.float32)
                 pad_rnn_output = tf.concat([pad_rnn_output, pad], axis=1)
                 
-                #self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
+               #  self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_logits_eval = tf.identity(pad_rnn_output)
                 self.decoder_predict_eval = tf.argmax(self.decoder_logits_eval, axis=-1, name='decoder_pred_eval')
                 self.eval_loss = tf.contrib.seq2seq.sequence_loss(logits=pad_rnn_output,
                                                              targets=pad_decoder_targets, weights=self.mask)
 
-                self.eval_summary = tf.summary.scalar('evaluation loss', self.eval_loss)
+                self.eval_summary = tf.summary.scalar('validation loss', self.eval_loss)
 
 #            elif self.mode == modes['test']:
 
@@ -245,7 +246,7 @@ def train():
     ckpt = tf.train.get_checkpoint_state(FLAGS.save_dir)
     if FLAGS.load_saver and ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
         print('Reloading model parameters..')
-        model.restore(train_sess, ckpt.model_checkpoint_path)
+        model.saver.restore(train_sess, ckpt.model_checkpoint_path)
     else:
         print('Created new model parameters..')
         train_sess.run(init)
@@ -314,13 +315,17 @@ def main(_):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4)
-    parser.add_argument('-mi', '--min_counts', type=int, default=25)
+    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-3)
+    parser.add_argument('-mi', '--min_counts', type=int, default=500)
     parser.add_argument('-e', '--num_epochs', type=int, default=50)
+<<<<<<< HEAD
     parser.add_argument('-b', '--batch_size', type=int, default=500)
+=======
+    parser.add_argument('-b', '--batch_size', type=int, default=200)
+>>>>>>> 75150c8fd65ff74869ad6987185ca476aa851080
     parser.add_argument('-t', '--test_mode', type=int, default=0)
-    parser.add_argument('-d', '--num_display_steps', type=int, default=20)
-    parser.add_argument('-ns', '--num_saver_steps', type=int, default=50)
+    parser.add_argument('-d', '--num_display_steps', type=int, default=30)
+    parser.add_argument('-ns', '--num_saver_steps', type=int, default=70)
     parser.add_argument('-s', '--save_dir', type=str, default='save/')
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
     parser.add_argument('-o', '--output_filename', type=str, default='output.txt')
