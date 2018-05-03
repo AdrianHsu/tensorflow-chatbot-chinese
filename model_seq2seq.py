@@ -38,16 +38,16 @@ special_tokens_to_word = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
 modes = {'train': 0, 'eval': 1, 'test': 2}
 
 class Seq2Seq:
-    def __init__(self, voc, idx2word, mode, att, lr = 1e-3):
+    def __init__(self, voc, idx2word, mode, att, lr=None):
 
         self.num_layers     =     2
         self.embedding_size =   250
         self.rnn_size       =  1024
         self.keep_prob      =   1.0
-        self.lr             =    lr
         self.vocab_num      =   voc
         self.with_attention =   att
         self.mode           =  mode
+        self.lr             =    lr
         self.idx2word   =  idx2word
 
     def _create_rnn_cell(self):
@@ -156,13 +156,13 @@ class Seq2Seq:
 
     def build_optimizer(self):
 
-        optimizer = tf.train.AdamOptimizer(self.lr)
+        optimizer = tf.train.GradientDescentOptimizer(self.lr)
         trainable_params = tf.trainable_variables()
         gradients = tf.gradients(self.train_loss, trainable_params)
         clip_gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
         self.train_op = optimizer.apply_gradients(zip(clip_gradients, trainable_params))
 
-    def train(self, sess, batch, print_pred, summary_writer, current_step, prob):
+    def train(self, sess, batch, print_pred, summary_writer, add_global, prob):
 
         feed_dict = {self.encoder_inputs: batch.encoder_inputs,
                       self.encoder_inputs_length: batch.encoder_inputs_length,
@@ -173,17 +173,18 @@ class Seq2Seq:
 
         if print_pred:
             run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-            _, loss, pred, summary = sess.run([self.train_op, self.train_loss, 
-                self.decoder_predict_train, self.train_summary], feed_dict=feed_dict, options=run_options)
+            _, loss, pred, summary, current_step, print_lr = sess.run([self.train_op, self.train_loss, 
+                self.decoder_predict_train, self.train_summary, add_global, self.lr], 
+                feed_dict=feed_dict, options=run_options)
 
             i = np.random.randint(0, len(batch.encoder_inputs))
             util.decoder_print(self.idx2word, batch.encoder_inputs[i], batch.encoder_inputs_length[i],
                 batch.decoder_targets[i], batch.decoder_targets_length[i], pred[i], 'yellow')
             summary_writer.add_summary(summary, global_step=current_step)
         else:
-            _, loss = sess.run([self.train_op, self.train_loss], feed_dict=feed_dict)
-        return loss, calc_perplexity(loss)
-
+            _, loss, current_step, print_lr = sess.run([self.train_op, self.train_loss, 
+                add_global, self.lr], feed_dict=feed_dict)
+        return loss, calc_perplexity(loss), current_step, print_lr
     def eval(self, sess, batch, summary_writer, current_step):
 
         feed_dict = {self.encoder_inputs: batch.encoder_inputs,
@@ -223,11 +224,18 @@ def train():
 
     gpu_config = tf.ConfigProto()
     gpu_config.gpu_options.allow_growth = True
+    
 
     print('start building train graph...')
     with train_graph.as_default():
+        global_step = tf.Variable(0, trainable=False)
+        lr = tf.train.exponential_decay(FLAGS.learning_rate,
+                    global_step=global_step,
+                    decay_steps=100,decay_rate=0.95)
+        add_global = global_step.assign_add(1)
+        
         model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
-            mode=modes['train'], att=FLAGS.with_attention, lr=FLAGS.learning_rate)
+            mode=modes['train'], att=FLAGS.with_attention, lr=lr)
         model.build_model()
         model.build_optimizer()
         model.saver = tf.train.Saver(max_to_keep = 3)
@@ -258,11 +266,11 @@ def train():
     
     num_steps = int( len(datasetTrain.data) / FLAGS.batch_size )
     pbar = tqdm(range(FLAGS.num_epochs))
-    lr = FLAGS.learning_rate
-    current_step = 0
+    
     pt = 0
     total_samp = FLAGS.num_epochs * 3
     samp_prob = util.inv_sigmoid(total_samp)
+    current_step = 0 # after first round, assign global_step to current_step
     for epo in pbar:
         print(color('start: epoch ' + str(epo), fg='blue', bg='white'))
         for i in range(num_steps):
@@ -270,7 +278,8 @@ def train():
             print_pred = False
             if current_step % FLAGS.num_display_steps == 0 and current_step != 0:
                 print_pred = True
-            loss, perp = model.train(train_sess, batch, print_pred, summary_writer, current_step, samp_prob[pt])
+            loss, perp, current_step, print_lr = model.train(train_sess, batch, print_pred, 
+                    summary_writer, add_global, samp_prob[pt])
             if current_step % FLAGS.num_saver_steps == 0 and current_step != 0:
                 ckpt_path = model.saver.save(train_sess, ckpts_path, global_step=current_step)
                 print(color("\nSaver saved: " + ckpt_path, fg='white', bg='green', style='bold'))
@@ -283,14 +292,13 @@ def train():
                 print(color("Epoch " + str(epo) + ", step " + str(i) + "/" + str(num_steps) + \
                  ", (Evaluation Loss: " + "{:.4f}".format(loss_eval) + \
                  ", Perplexity: " + "{:.4f}".format(perp_eval) + ")", fg='white', bg='green'))
-            current_step += 1
-            pbar.set_description("Epoch " + str(epo) + ", step " + str(i) + "/" + str(num_steps) + \
-                    ", (Loss: " + "{:.4f}".format(loss) + ", Perplexity: " + "{:.4f}".format(perp) + ", Sampling: "+ \
+            pbar.set_description("Epoch " + str(epo) + ", step " + str(i) + "/" + \
+                    str(num_steps) + "(" + str(current_step) + ")" + \
+                    ", (Loss: " + "{:.4f}".format(loss) + ", lr: " + "{:.8f}".format(print_lr) + ", Sampling: "+ \
                     "{:.4f}".format(samp_prob[pt]) + ")" )
             if i % int(num_steps / 3) == 0 and i != 0:
                 pt += 1
                 print(color('sampling pt: ' + str( pt ) + '/' + str(total_samp), fg='white', bg='red'))
-        pt += 1
         print(color('sampling pt: ' + str( pt ) + '/' + str(total_samp), fg='white', bg='red'))
 def test():
     print('hi')
@@ -315,7 +323,7 @@ def main(_):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-3)
+    parser.add_argument('-lr', '--learning_rate', type=float, default=0.5)
     parser.add_argument('-mi', '--min_counts', type=int, default=500)
     parser.add_argument('-e', '--num_epochs', type=int, default=50)
     parser.add_argument('-b', '--batch_size', type=int, default=200)
