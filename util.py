@@ -15,7 +15,7 @@ def decoder_print(idx2word, _in, _len_in, _out, _len_out, pred, my_color):
     _in = list(reversed(_in))
     eos = len(pred) - 1 
     for i in range(len(pred)):
-        if pred[i] == special_tokens['<EOS>']:
+        if pred[i] == special_tokens['<PAD>']:
             eos = i
             break
     if eos == 0:
