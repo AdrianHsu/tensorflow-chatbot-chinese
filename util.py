@@ -4,9 +4,9 @@ from colors import *
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
 
 def inv_sigmoid(num_epo):
-    x = np.arange(-1.0, 2.0, (3.0/num_epo))
-    y = 1 / (1 + np.e**x)
-    #y = np.ones(num_epo)
+    #x = np.arange(-1.0, 2.0, (3.0/num_epo))
+    #y = 1 / (1 + np.e**x)
+    y = np.ones(num_epo)
     print(y)
     return y
 
@@ -15,7 +15,7 @@ def decoder_print(idx2word, _in, _len_in, _out, _len_out, pred, my_color):
     _in = list(reversed(_in))
     eos = len(pred) - 1 
     for i in range(len(pred)):
-        if pred[i] == special_tokens['<EOS>']:
+        if pred[i] == special_tokens['<PAD>']:
             eos = i
             break
     if eos == 0:

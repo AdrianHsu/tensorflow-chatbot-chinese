@@ -129,7 +129,7 @@ class Seq2Seq:
 
             elif self.mode == modes['eval']:
                 start_tokens = tf.ones([self.batch_size, ], tf.int32) # * special_tokens['<BOS>']
-                end_token = special_tokens['<EOS>']
+                end_token = special_tokens['<PAD>']
                 decoding_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(embedding=embedding,
                                                                     start_tokens=start_tokens, end_token=end_token)
                 inference_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=decoding_helper,
@@ -246,7 +246,7 @@ def train():
     ckpt = tf.train.get_checkpoint_state(FLAGS.save_dir)
     if FLAGS.load_saver and ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
         print('Reloading model parameters..')
-        model.restore(train_sess, ckpt.model_checkpoint_path)
+        model.saver.restore(train_sess, ckpt.model_checkpoint_path)
     else:
         print('Created new model parameters..')
         train_sess.run(init)

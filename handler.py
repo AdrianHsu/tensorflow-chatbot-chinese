@@ -71,7 +71,6 @@ class DatasetBase:
                 init = False
             else:
                 _out = idx_list
-                _out.append(special_tokens['<EOS>'])
                 _rev_in = list(reversed(_in))
                 self.data.append([_rev_in, _out])
                 _in = idx_list
