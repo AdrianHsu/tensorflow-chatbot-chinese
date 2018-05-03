@@ -290,7 +290,6 @@ def train():
             if i % int(num_steps / 3) == 0 and i != 0:
                 pt += 1
                 print(color('sampling pt: ' + str( pt ) + '/' + str(total_samp), fg='white', bg='red'))
-        pt += 1
         print(color('sampling pt: ' + str( pt ) + '/' + str(total_samp), fg='white', bg='red'))
 def test():
     print('hi')
@@ -315,14 +314,10 @@ def main(_):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-3)
-    parser.add_argument('-mi', '--min_counts', type=int, default=500)
-    parser.add_argument('-e', '--num_epochs', type=int, default=50)
-<<<<<<< HEAD
-    parser.add_argument('-b', '--batch_size', type=int, default=500)
-=======
-    parser.add_argument('-b', '--batch_size', type=int, default=200)
->>>>>>> 75150c8fd65ff74869ad6987185ca476aa851080
+    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4)
+    parser.add_argument('-mi', '--min_counts', type=int, default=250)
+    parser.add_argument('-e', '--num_epochs', type=int, default=100)
+    parser.add_argument('-b', '--batch_size', type=int, default=1200)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=30)
     parser.add_argument('-ns', '--num_saver_steps', type=int, default=70)
