@@ -23,8 +23,8 @@ def decoder_print(idx2word, _in, _len_in, _out, _len_out, pred, my_color):
 
     prev = [ idx2word[x] for x in _in[0:(_len_in)] ]
     ans  = [ idx2word[x] for x in _out[0:(_len_out)] ]
-    pred = [ idx2word[x] for x in pred[0:(eos)] ] 
+    predict = [ idx2word[x] for x in pred[0:(eos)] ] 
 
     print(color('\nQuestions: ' + str(prev) + \
-            '\n Answers : ' + str(ans ) + ' (len: ' + str(len(_out)) + ', eos: ' + str(_len_out) + ')' + \
-            '\n Predict : ' + str(pred) + ' (len: ' + str(len(pred)) +', eos: ' + str(eos) + ')', fg=my_color))
+            '\n Answers : ' + str(ans) + ' (len: ' + str(len(_out)) + ', eos: ' + str(_len_out) + ')' + \
+            '\n Predict : ' + str(predict) + ' (len: ' + str(len(pred)) +', eos: ' + str(eos) + ')', fg=my_color))
