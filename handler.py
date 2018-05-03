@@ -72,7 +72,8 @@ class DatasetBase:
             else:
                 _out = idx_list
                 _rev_in = list(reversed(_in))
-                self.data.append([_rev_in, _out])
+                # (the first EOS is part of the loss)
+                self.data.append([_rev_in, _out + [special_tokens['<EOS>']]])
                 _in = idx_list
             if i % 100000 == 0:
                 print("building data list: " + str(i) + "/" + str(len(data)) + " done.")
@@ -117,11 +118,11 @@ class DatasetBase:
         max_target_length = max(batch.decoder_targets_length)
         for sample in samples:
             source = sample[0]
-            pad = [special_tokens['<PAD>']] * (max_source_length - len(source))
+            pad = [special_tokens['<EOS>']] * (max_source_length - len(source))
             batch.encoder_inputs.append(pad + source)
 
             target = sample[1]
-            pad = [special_tokens['<PAD>']] * (max_target_length - len(target))
+            pad = [special_tokens['<EOS>']] * (max_target_length - len(target))
             batch.decoder_targets.append( target + pad )
         return batch
 
