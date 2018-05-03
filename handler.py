@@ -43,7 +43,7 @@ class DatasetBase:
             else:
                 l.append(special_tokens['<UNK>'])
                 unk_num += 1
-        if unk_num / float(len(sent)) >= 0.4:
+        if unk_num / float(len(sent)) > 0.0:
             emp = []
             return emp
 
@@ -73,7 +73,7 @@ class DatasetBase:
                 _out = idx_list
                 _rev_in = list(reversed(_in))
                 # (the first EOS is part of the loss)
-                self.data.append([_rev_in, _out])
+                self.data.append([_rev_in, _out + [special_tokens['<EOS>']]])
                 _in = idx_list
             if i % 100000 == 0:
                 print("building data list: " + str(i) + "/" + str(len(data)) + " done.")

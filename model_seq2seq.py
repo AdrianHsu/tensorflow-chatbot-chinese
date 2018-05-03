@@ -42,8 +42,8 @@ class Seq2Seq:
 
         self.num_layers     =     2
         self.embedding_size =   250
-        self.rnn_size       =   500
-        self.keep_prob      =   0.5
+        self.rnn_size       =  1024
+        self.keep_prob      =   1.0
         self.lr             =    lr
         self.vocab_num      =   voc
         self.with_attention =   att
@@ -129,7 +129,7 @@ class Seq2Seq:
 
             elif self.mode == modes['eval']:
                 start_tokens = tf.ones([self.batch_size, ], tf.int32) # * special_tokens['<BOS>']
-                end_token = special_tokens['<PAD>']
+                end_token = special_tokens['<EOS>']
                 decoding_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(embedding=embedding,
                                                                     start_tokens=start_tokens, end_token=end_token)
                 inference_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=decoding_helper,
@@ -150,7 +150,7 @@ class Seq2Seq:
                 self.eval_loss = tf.contrib.seq2seq.sequence_loss(logits=pad_rnn_output,
                                                              targets=pad_decoder_targets, weights=self.mask)
 
-                self.eval_summary = tf.summary.scalar('evaluation loss', self.eval_loss)
+                self.eval_summary = tf.summary.scalar('validation loss', self.eval_loss)
 
 #            elif self.mode == modes['test']:
 
@@ -315,10 +315,10 @@ def main(_):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-4)
-    parser.add_argument('-mi', '--min_counts', type=int, default=25)
+    parser.add_argument('-lr', '--learning_rate', type=float, default=1e-3)
+    parser.add_argument('-mi', '--min_counts', type=int, default=500)
     parser.add_argument('-e', '--num_epochs', type=int, default=50)
-    parser.add_argument('-b', '--batch_size', type=int, default=100)
+    parser.add_argument('-b', '--batch_size', type=int, default=200)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=30)
     parser.add_argument('-ns', '--num_saver_steps', type=int, default=70)
