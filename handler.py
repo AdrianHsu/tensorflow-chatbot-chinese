@@ -3,8 +3,10 @@ import numpy as np
 import pickle
 import re
 from keras.preprocessing.text import Tokenizer, text_to_word_sequence
+from gensim.models import Word2Vec
 
 np.random.seed(0)
+word2vec_filename = "word2vec.model"
 
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
 special_tokens_to_word = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
@@ -132,21 +134,32 @@ class DatasetBase:
         with open('idx2word.pkl', 'rb') as handle:
             self.idx2word = pickle.load(handle)
 
+        model = Word2Vec.load(word2vec_filename)
+        self.model = model
+        print('load word2vec model...done!')
+
         self.vocab_num = len(self.word2idx)
         print('self.vocab_num: ', self.vocab_num)
 
 class DatasetTrain(DatasetBase):
     def __init__(self):
         super().__init__()
+        self.model = None
         
     def build_dict(self, data_dir, filename, min_count,
-                train_line_num, eval_line_num, PKL_EXIST=False):
+                train_line_num, eval_line_num, emb_size, PKL_EXIST=False):
         # for datasetTrain
 
         file_path = data_dir + filename
         file = open(file_path, 'r')
 
         raw_line = []
+        raw_line.append(['<PAD>'] * 2999999)
+        raw_line.append(['<BOS>'] * 100)
+        raw_line.append(['<EOS>'] * 50)
+        raw_line.append(['<UNK>'] *  999999)
+
+
         train_data = []
         eval_data = []
         cnt = 0
@@ -159,37 +172,36 @@ class DatasetTrain(DatasetBase):
             reg = re.findall(r"[\w']+", line)
             if len(reg) == 0:
                 continue
-            raw_line.append(line)
+            raw_line.append(['<BOS>'] + line + ['<EOS>'])
         
         assert len(train_data) == train_line_num
         assert len(eval_data)  == eval_line_num
-        if PKL_EXIST:
+        
+        if PKL_EXIST: # still need model!!
             print('dict already exists, loading...')
+            print('Word2Vec model exists, loading...')
             self.load_dict()
             return train_data, eval_data
 
-        tokenizer = Tokenizer(lower=True, split=' ')
-        tokenizer.fit_on_texts(raw_line)
+        print('start building Word2Vec model...')
 
-        word_counts = {}
-        for tok in tokenizer.word_counts.items():
-            if tok[1] >= min_count:
-                word_counts[tok[0]] = tok[1]
+        self.model = Word2Vec(raw_line, size=emb_size, sorted_vocab=1, min_count=min_count, workers=4)
+        self.model.save(word2vec_filename)
 
-
-        for i in range(0, 4):
-            tok = special_tokens_to_word[i]
-            self.word2idx[tok] = i
-            self.idx2word[i] = tok
-
+        print('done building Word2Vec model!')
+        print('save model...')
         cnt = 0
-        for tok in tokenizer.word_index.items():
-            if tok[0] in word_counts:
-                self.word2idx[tok[0]] = cnt + 4
-                self.idx2word[cnt + 4] = tok[0]
-                cnt += 1
+        for word in self.model.wv.vocab:
+            ind = self.model.wv.vocab[word].index
+            self.word2idx[word] = ind
+            self.idx2word[ind] = word
+            cnt += 1
 
-        self.vocab_num = len(self.word2idx)
+        self.vocab_num = cnt
+
+        assert self.vocab_num == len(self.word2idx)
+        assert self.vocab_num == len(self.idx2word)
+
         print('self.vocab_num: ', self.vocab_num)
 
         with open('word2idx.pkl', 'wb') as handle:
@@ -197,7 +209,7 @@ class DatasetTrain(DatasetBase):
         with open('idx2word.pkl', 'wb') as handle:
             pickle.dump(self.idx2word, handle)
 
-        return train_data, eval_data
+        return train_data, eval_data, self.model
 
 class DatasetEval(DatasetBase):
     def __init__(self):

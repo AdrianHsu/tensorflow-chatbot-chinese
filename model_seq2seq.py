@@ -13,6 +13,8 @@ from colors import *
 from tqdm import *
 from handler import Batch, DatasetBase, DatasetTrain, DatasetEval, DatasetTest
 import util
+from gensim.models import Word2Vec
+
 
 FLAGS = None
 
@@ -29,7 +31,8 @@ filename = '/clr_conversation.txt'
 total_line_num = 2842478
 train_line_num = 2840000
 eval_line_num  =    2478
-PKL_EXIST      =    True
+emb_size       =     250
+PKL_EXIST      =   False
 
 max_sentence_length = 35 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -38,10 +41,13 @@ special_tokens_to_word = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
 modes = {'train': 0, 'eval': 1, 'test': 2}
 
 class Seq2Seq:
-    def __init__(self, voc, idx2word, mode, att, lr=None):
+    def __init__(self, emb, voc, idx2word, mode, att, lr=None):
+
+        self.embedding = tf.Variable(
+            initial_value=tf.constant(emb), trainable=True)
 
         self.num_layers     =     2
-        self.embedding_size =   250
+        self.embedding_size =   emb_size
         self.rnn_size       =   512
         self.keep_prob      =   1.0#0.1
         self.vocab_num      =   voc
@@ -79,9 +85,7 @@ class Seq2Seq:
 
         with tf.variable_scope('encoder'):
             encoder_cell = self._create_rnn_cell()
-            embedding = tf.get_variable('embedding', [self.vocab_num, self.embedding_size],
-                    initializer=tf.truncated_normal_initializer())
-            encoder_inputs_embedded = tf.nn.embedding_lookup(embedding, self.encoder_inputs)
+            encoder_inputs_embedded = tf.nn.embedding_lookup(self.embedding, self.encoder_inputs)
             encoder_outputs, encoder_state = tf.nn.dynamic_rnn(encoder_cell, encoder_inputs_embedded,
                                                                sequence_length=self.encoder_inputs_length,
                                                                dtype=tf.float32)
@@ -107,11 +111,11 @@ class Seq2Seq:
             if self.mode == modes['train']:
                 ending = tf.strided_slice(self.decoder_targets, [0, 0], [self.batch_size, -1], [1, 1])
                 decoder_input = tf.concat([tf.fill([self.batch_size, 1], special_tokens['<BOS>']), ending], 1)
-                decoder_inputs_embedded = tf.nn.embedding_lookup(embedding, decoder_input)
+                decoder_inputs_embedded = tf.nn.embedding_lookup(self.embedding, decoder_input)
                 training_helper = tf.contrib.seq2seq.ScheduledEmbeddingTrainingHelper(
                                                                     inputs=decoder_inputs_embedded,
                                                                     sequence_length=self.decoder_targets_length,
-                                                                    embedding=embedding,
+                                                                    embedding=self.embedding,
                                                                     time_major=False, 
                                                                     sampling_probability=self.sampling_prob,
                                                                     name='training_helper')
@@ -130,7 +134,7 @@ class Seq2Seq:
             elif self.mode == modes['eval']:
                 start_tokens = tf.ones([self.batch_size, ], tf.int32) # * special_tokens['<BOS>']
                 end_token = special_tokens['<EOS>']
-                decoding_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(embedding=embedding,
+                decoding_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(embedding=self.embedding,
                                                                     start_tokens=start_tokens, end_token=end_token)
                 inference_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=decoding_helper,
                                                                         initial_state=decoder_initial_state,
@@ -213,12 +217,27 @@ def train():
     datasetTrain = DatasetTrain()
     print('start build dict...')
     train_data, eval_data = datasetTrain.build_dict(FLAGS.data_dir, filename, 
-        FLAGS.min_counts, train_line_num, eval_line_num, PKL_EXIST)
+        FLAGS.min_counts, train_line_num, eval_line_num, emb_size, PKL_EXIST)
     print('build dict done!')
     datasetTrain.prep(train_data)
     datasetEval = DatasetEval()
     datasetEval.load_dict()
     datasetEval.prep(eval_data)
+
+    word2vec_model = datasetTrain.model
+    embeddings = np.zeros([datasetTrain.vocab_num, emb_size])
+    for word in word2vec_model.wv.vocab:
+        index = word2vec_model.wv.vocab[word].index
+        vec = word2vec_model.wv[word]
+        embeddings[index] = vec
+        if word in special_tokens_to_word:
+            print('special word: ', word, ', index: ', index)
+    pad = np.random.normal(size=[emb_size])
+    unk = np.random.normal(size=[emb_size])
+    embeddings[0] = pad
+    embeddings[3] = unk
+    exit(0)
+
 
     train_graph = tf.Graph()
     eval_graph = tf.Graph()
@@ -234,7 +253,7 @@ def train():
                     global_step=global_step,
                     decay_steps=8000,decay_rate=0.95)
         add_global = global_step.assign_add(1)
-        model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
+        model = Seq2Seq(emb=embeddings, voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
             mode=modes['train'], att=FLAGS.with_attention, lr=lr)
         model.build_model()
         model.build_optimizer()
@@ -244,7 +263,7 @@ def train():
 
     print('start building eval graph...')
     with eval_graph.as_default():
-        model_eval = Seq2Seq(voc=datasetEval.vocab_num, idx2word=datasetEval.idx2word,
+        model_eval = Seq2Seq(emb=embeddings, voc=datasetEval.vocab_num, idx2word=datasetEval.idx2word,
             mode=modes['eval'], att=FLAGS.with_attention)
         model_eval.build_model()
         model_eval.saver = tf.train.Saver(max_to_keep = 3)
@@ -335,7 +354,7 @@ if __name__ == '__main__':
     parser.add_argument('-lo', '--load_saver', type=int, default=0)
     parser.add_argument('-at', '--with_attention', type=int, default=1)
     parser.add_argument('--data_dir', type=str, 
-        default=('/home/data/mlds_hw2_2_data')
+        default=('../')
     )
     parser.add_argument('--test_dir', type=str, 
         default=('/home/data/mlds_hw2_2_data')
