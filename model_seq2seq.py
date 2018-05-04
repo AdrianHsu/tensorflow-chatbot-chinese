@@ -32,7 +32,7 @@ total_line_num = 2842478
 train_line_num = 2840000
 eval_line_num  =    2478
 emb_size       =     250
-PKL_EXIST      =   False
+PKL_EXIST      =    True
 
 max_sentence_length = 35 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -41,10 +41,8 @@ special_tokens_to_word = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
 modes = {'train': 0, 'eval': 1, 'test': 2}
 
 class Seq2Seq:
-    def __init__(self, emb, voc, idx2word, mode, att, lr=None):
+    def __init__(self, voc, idx2word, mode, att, lr=None):
 
-        self.embedding = tf.Variable(
-            initial_value=tf.constant(emb), trainable=True)
 
         self.num_layers     =     2
         self.embedding_size =   emb_size
@@ -67,10 +65,13 @@ class Seq2Seq:
         cell = tf.contrib.rnn.MultiRNNCell([single_rnn_cell() for _ in range(self.num_layers)])
         return cell
 
-    def build_model(self):
+    def build_model(self, emb=None):
         
         self.encoder_inputs = tf.placeholder(tf.int32, [None, None], name='encoder_inputs')
         self.encoder_inputs_length = tf.placeholder(tf.int32, [None], name='encoder_inputs_length')
+
+        embedding = tf.get_variable(
+            initializer=tf.constant(emb), dtype=tf.float32, trainable=True, name='embedding')
 
         self.batch_size = tf.placeholder(tf.int32, [], name='batch_size')
 
@@ -85,7 +86,7 @@ class Seq2Seq:
 
         with tf.variable_scope('encoder'):
             encoder_cell = self._create_rnn_cell()
-            encoder_inputs_embedded = tf.nn.embedding_lookup(self.embedding, self.encoder_inputs)
+            encoder_inputs_embedded = tf.nn.embedding_lookup(embedding, self.encoder_inputs)
             encoder_outputs, encoder_state = tf.nn.dynamic_rnn(encoder_cell, encoder_inputs_embedded,
                                                                sequence_length=self.encoder_inputs_length,
                                                                dtype=tf.float32)
@@ -111,11 +112,11 @@ class Seq2Seq:
             if self.mode == modes['train']:
                 ending = tf.strided_slice(self.decoder_targets, [0, 0], [self.batch_size, -1], [1, 1])
                 decoder_input = tf.concat([tf.fill([self.batch_size, 1], special_tokens['<BOS>']), ending], 1)
-                decoder_inputs_embedded = tf.nn.embedding_lookup(self.embedding, decoder_input)
+                decoder_inputs_embedded = tf.nn.embedding_lookup(embedding, decoder_input)
                 training_helper = tf.contrib.seq2seq.ScheduledEmbeddingTrainingHelper(
                                                                     inputs=decoder_inputs_embedded,
                                                                     sequence_length=self.decoder_targets_length,
-                                                                    embedding=self.embedding,
+                                                                    embedding=embedding,
                                                                     time_major=False, 
                                                                     sampling_probability=self.sampling_prob,
                                                                     name='training_helper')
@@ -134,7 +135,7 @@ class Seq2Seq:
             elif self.mode == modes['eval']:
                 start_tokens = tf.ones([self.batch_size, ], tf.int32) # * special_tokens['<BOS>']
                 end_token = special_tokens['<EOS>']
-                decoding_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(embedding=self.embedding,
+                decoding_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(embedding=embedding,
                                                                     start_tokens=start_tokens, end_token=end_token)
                 inference_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=decoding_helper,
                                                                         initial_state=decoder_initial_state,
@@ -225,7 +226,7 @@ def train():
     datasetEval.prep(eval_data)
 
     word2vec_model = datasetTrain.model
-    embeddings = np.zeros([datasetTrain.vocab_num, emb_size])
+    embeddings = np.zeros([datasetTrain.vocab_num, emb_size],dtype=np.float32)
     for word in word2vec_model.wv.vocab:
         index = word2vec_model.wv.vocab[word].index
         vec = word2vec_model.wv[word]
@@ -236,16 +237,14 @@ def train():
     unk = np.random.normal(size=[emb_size])
     embeddings[0] = pad
     embeddings[3] = unk
-    exit(0)
 
-
+    np.save('embeddings.npy', embeddings)
     train_graph = tf.Graph()
     eval_graph = tf.Graph()
 
     gpu_config = tf.ConfigProto()
     gpu_config.gpu_options.allow_growth = True
     
-
     print('start building train graph...')
     with train_graph.as_default():
         global_step = tf.Variable(0, trainable=False)
@@ -253,9 +252,9 @@ def train():
                     global_step=global_step,
                     decay_steps=8000,decay_rate=0.95)
         add_global = global_step.assign_add(1)
-        model = Seq2Seq(emb=embeddings, voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
+        model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
             mode=modes['train'], att=FLAGS.with_attention, lr=lr)
-        model.build_model()
+        model.build_model(embeddings)
         model.build_optimizer()
         model.saver = tf.train.Saver(max_to_keep = 3)
         init = tf.global_variables_initializer()
@@ -263,9 +262,9 @@ def train():
 
     print('start building eval graph...')
     with eval_graph.as_default():
-        model_eval = Seq2Seq(emb=embeddings, voc=datasetEval.vocab_num, idx2word=datasetEval.idx2word,
+        model_eval = Seq2Seq(voc=datasetEval.vocab_num, idx2word=datasetEval.idx2word,
             mode=modes['eval'], att=FLAGS.with_attention)
-        model_eval.build_model()
+        model_eval.build_model(embeddings)
         model_eval.saver = tf.train.Saver(max_to_keep = 3)
     eval_sess = tf.Session(graph=eval_graph, config=gpu_config)
 
@@ -343,7 +342,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.5)
     parser.add_argument('-mi', '--min_counts', type=int, default=200)
-    parser.add_argument('-e', '--num_epochs', type=int, default=150)
+    parser.add_argument('-e', '--num_epochs', type=int, default=100)
     parser.add_argument('-b', '--batch_size', type=int, default=750)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=30)
@@ -354,7 +353,7 @@ if __name__ == '__main__':
     parser.add_argument('-lo', '--load_saver', type=int, default=0)
     parser.add_argument('-at', '--with_attention', type=int, default=1)
     parser.add_argument('--data_dir', type=str, 
-        default=('../')
+        default=('/home/data/mlds_hw2_2_data')
     )
     parser.add_argument('--test_dir', type=str, 
         default=('/home/data/mlds_hw2_2_data')

@@ -172,8 +172,10 @@ class DatasetTrain(DatasetBase):
             reg = re.findall(r"[\w']+", line)
             if len(reg) == 0:
                 continue
-            raw_line.append(['<BOS>'] + line + ['<EOS>'])
-        
+            line = text_to_word_sequence(line, lower=True, split=" ")
+            line.insert(0, '<BOS>')
+            line.append('<EOS>')
+            raw_line.append(line)
         assert len(train_data) == train_line_num
         assert len(eval_data)  == eval_line_num
         
@@ -209,7 +211,7 @@ class DatasetTrain(DatasetBase):
         with open('idx2word.pkl', 'wb') as handle:
             pickle.dump(self.idx2word, handle)
 
-        return train_data, eval_data, self.model
+        return train_data, eval_data
 
 class DatasetEval(DatasetBase):
     def __init__(self):
