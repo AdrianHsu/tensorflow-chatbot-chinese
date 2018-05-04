@@ -29,7 +29,7 @@ filename = '/clr_conversation.txt'
 total_line_num = 2842478
 train_line_num = 2840000
 eval_line_num  =    2478
-PKL_EXIST      =   False
+PKL_EXIST      =    True
 
 max_sentence_length = 35 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -43,7 +43,7 @@ class Seq2Seq:
         self.num_layers     =     2
         self.embedding_size =   250
         self.rnn_size       =   512
-        self.keep_prob      =   0.1
+        self.keep_prob      =   1.0#0.1
         self.vocab_num      =   voc
         self.with_attention =   att
         self.mode           =  mode
@@ -325,7 +325,7 @@ if __name__ == '__main__':
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.5)
     parser.add_argument('-mi', '--min_counts', type=int, default=200)
     parser.add_argument('-e', '--num_epochs', type=int, default=20)
-    parser.add_argument('-b', '--batch_size', type=int, default=100)
+    parser.add_argument('-b', '--batch_size', type=int, default=750)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=30)
     parser.add_argument('-ns', '--num_saver_steps', type=int, default=70)
@@ -335,7 +335,7 @@ if __name__ == '__main__':
     parser.add_argument('-lo', '--load_saver', type=int, default=0)
     parser.add_argument('-at', '--with_attention', type=int, default=1)
     parser.add_argument('--data_dir', type=str, 
-        default=('./data')
+        default=('/home/data/mlds_hw2_2_data')
     )
     parser.add_argument('--test_dir', type=str, 
         default=('/home/data/mlds_hw2_2_data')

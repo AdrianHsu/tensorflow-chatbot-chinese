@@ -123,7 +123,7 @@ class DatasetBase:
 
             target = sample[1]
             pad = [special_tokens['<PAD>']] * (max_target_length - len(target))
-            batch.decoder_targets.append( target + pad )
+            batch.decoder_targets.append(target + pad)
         return batch
 
     def load_dict(self): # for datasetEval
