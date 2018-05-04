@@ -41,7 +41,7 @@ class Seq2Seq:
     def __init__(self, voc, idx2word, mode, att, lr=None):
 
         self.num_layers     =     2
-        self.embedding_size =   300
+        self.embedding_size =   250
         self.rnn_size       =   512
         self.keep_prob      =   0.1
         self.vocab_num      =   voc
@@ -328,7 +328,7 @@ if __name__ == '__main__':
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.5)
     parser.add_argument('-mi', '--min_counts', type=int, default=200)
     parser.add_argument('-e', '--num_epochs', type=int, default=20)
-    parser.add_argument('-b', '--batch_size', type=int, default=128)
+    parser.add_argument('-b', '--batch_size', type=int, default=100)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=30)
     parser.add_argument('-ns', '--num_saver_steps', type=int, default=70)
