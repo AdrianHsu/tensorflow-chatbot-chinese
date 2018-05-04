@@ -231,7 +231,7 @@ def train():
         global_step = tf.Variable(0, trainable=False)
         lr = tf.train.exponential_decay(FLAGS.learning_rate,
                     global_step=global_step,
-                    decay_steps=1000,decay_rate=0.95)
+                    decay_steps=10000000,decay_rate=0.95)
         add_global = global_step.assign_add(1)
         
         model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
@@ -325,7 +325,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.5)
     parser.add_argument('-mi', '--min_counts', type=int, default=500)
-    parser.add_argument('-e', '--num_epochs', type=int, default=50)
+    parser.add_argument('-e', '--num_epochs', type=int, default=30)
     parser.add_argument('-b', '--batch_size', type=int, default=200)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=30)
