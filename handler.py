@@ -43,7 +43,7 @@ class DatasetBase:
             else:
                 l.append(special_tokens['<UNK>'])
                 unk_num += 1
-        if unk_num / float(len(sent)) > 0.0:
+        if unk_num > 1: #unk_num / float(len(sent)) >= 0.4:
             emp = []
             return emp
 
@@ -58,7 +58,7 @@ class DatasetBase:
                 continue
 
             sent = text_to_word_sequence(data[i], lower=True, split=' ')
-            if len(sent) > 20: # too long
+            if len(sent) > 15: # too long
                 init = True
                 continue
             idx_list = self.sentence_to_idx(sent)
