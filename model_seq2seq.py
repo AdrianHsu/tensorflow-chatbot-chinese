@@ -295,9 +295,8 @@ def train():
                  ", Perplexity: " + "{:.4f}".format(perp_eval) + ")", fg='white', bg='green'))
             pbar.set_description("Epoch " + str(epo) + ", step " + str(i) + "/" + \
                     str(num_steps) + "(" + str(current_step) + ")" + \
-                    #", (Loss: " + "{:.4f}".format(loss) + ", lr: " + "{:.8f}".format(print_lr) + ", Sampling: "+ \
-                    ", (Loss: " + "{:.4f}".format(loss) + ", lr: " + "{:.8f}".format(0.0005) + ", Perplexity: "+ \
-                    "{:.4f}".format(perp) + ")" )
+                    ", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.4f}".format(perp) + ", Sampling: "+ \
+                    "{:.4f}".format(samp_prob[pt]) + ")" )
             if i % int(num_steps / 3) == 0 and i != 0:
                 pt += 1
                 print(color('sampling pt: ' + str( pt ) + '/' + str(total_samp), fg='white', bg='red'))
