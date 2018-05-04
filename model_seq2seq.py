@@ -29,7 +29,7 @@ filename = '/clr_conversation.txt'
 total_line_num = 2842478
 train_line_num = 2840000
 eval_line_num  =    2478
-PKL_EXIST      =    True
+PKL_EXIST      =   False
 
 max_sentence_length = 35 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -42,8 +42,8 @@ class Seq2Seq:
 
         self.num_layers     =     2
         self.embedding_size =   250
-        self.rnn_size       =  1024
-        self.keep_prob      =   1.0
+        self.rnn_size       =   512
+        self.keep_prob      =   0.1
         self.vocab_num      =   voc
         self.with_attention =   att
         self.mode           =  mode
@@ -80,7 +80,7 @@ class Seq2Seq:
         with tf.variable_scope('encoder'):
             encoder_cell = self._create_rnn_cell()
             embedding = tf.get_variable('embedding', [self.vocab_num, self.embedding_size],
-                    initializer=tf.random_normal_initializer(mean=0.0, stddev=0.1))
+                    initializer=tf.truncated_normal_initializer())
             encoder_inputs_embedded = tf.nn.embedding_lookup(embedding, self.encoder_inputs)
             encoder_outputs, encoder_state = tf.nn.dynamic_rnn(encoder_cell, encoder_inputs_embedded,
                                                                sequence_length=self.encoder_inputs_length,
@@ -102,7 +102,7 @@ class Seq2Seq:
             else:
                 decoder_initial_state = encoder_state
             projection_layer = tf.layers.Dense(
-                    self.vocab_num, kernel_initializer=tf.truncated_normal_initializer(mean=0.0, stddev=0.1))
+                    self.vocab_num, kernel_initializer=tf.truncated_normal_initializer())
 
             if self.mode == modes['train']:
                 ending = tf.strided_slice(self.decoder_targets, [0, 0], [self.batch_size, -1], [1, 1])
@@ -156,7 +156,8 @@ class Seq2Seq:
 
     def build_optimizer(self):
 
-        optimizer = tf.train.GradientDescentOptimizer(self.lr)
+        #optimizer = tf.train.GradientDescentOptimizer(self.lr)
+        optimizer = tf.train.AdamOptimizer(0.0005)
         trainable_params = tf.trainable_variables()
         gradients = tf.gradients(self.train_loss, trainable_params)
         clip_gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
@@ -231,9 +232,8 @@ def train():
         global_step = tf.Variable(0, trainable=False)
         lr = tf.train.exponential_decay(FLAGS.learning_rate,
                     global_step=global_step,
-                    decay_steps=10000000,decay_rate=0.95)
+                    decay_steps=8000,decay_rate=0.95)
         add_global = global_step.assign_add(1)
-        
         model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
             mode=modes['train'], att=FLAGS.with_attention, lr=lr)
         model.build_model()
@@ -283,7 +283,6 @@ def train():
             if current_step % FLAGS.num_saver_steps == 0 and current_step != 0:
                 ckpt_path = model.saver.save(train_sess, ckpts_path, global_step=current_step)
                 print(color("\nSaver saved: " + ckpt_path, fg='white', bg='green', style='bold'))
-                
                 model_eval.saver.restore(eval_sess, ckpt_path)
                 print(color("\n[Eval. Prediction] Epoch " + str(epo) + ", step " + str(i) + "/" \
                     + str(num_steps) + "......", fg='white', bg='green', style='underline'))
@@ -294,7 +293,7 @@ def train():
                  ", Perplexity: " + "{:.4f}".format(perp_eval) + ")", fg='white', bg='green'))
             pbar.set_description("Epoch " + str(epo) + ", step " + str(i) + "/" + \
                     str(num_steps) + "(" + str(current_step) + ")" + \
-                    ", (Loss: " + "{:.4f}".format(loss) + ", lr: " + "{:.8f}".format(print_lr) + ", Sampling: "+ \
+                    ", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.4f}".format(perp) + ", Sampling: "+ \
                     "{:.4f}".format(samp_prob[pt]) + ")" )
             if i % int(num_steps / 3) == 0 and i != 0:
                 pt += 1
@@ -324,9 +323,9 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.5)
-    parser.add_argument('-mi', '--min_counts', type=int, default=500)
-    parser.add_argument('-e', '--num_epochs', type=int, default=30)
-    parser.add_argument('-b', '--batch_size', type=int, default=200)
+    parser.add_argument('-mi', '--min_counts', type=int, default=200)
+    parser.add_argument('-e', '--num_epochs', type=int, default=20)
+    parser.add_argument('-b', '--batch_size', type=int, default=100)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=30)
     parser.add_argument('-ns', '--num_saver_steps', type=int, default=70)
@@ -336,7 +335,7 @@ if __name__ == '__main__':
     parser.add_argument('-lo', '--load_saver', type=int, default=0)
     parser.add_argument('-at', '--with_attention', type=int, default=1)
     parser.add_argument('--data_dir', type=str, 
-        default=('/home/data/mlds_hw2_2_data')
+        default=('./data')
     )
     parser.add_argument('--test_dir', type=str, 
         default=('/home/data/mlds_hw2_2_data')
