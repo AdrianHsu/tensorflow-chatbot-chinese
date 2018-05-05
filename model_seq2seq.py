@@ -32,9 +32,9 @@ total_line_num = 2842478
 train_line_num = 2840000
 eval_line_num  =    2478
 emb_size       =     250
-PKL_EXIST      =    True
+PKL_EXIST      =   False
 
-max_sentence_length = 35 # longest
+max_sentence_length = 15 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
 special_tokens_to_word = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
 
@@ -45,14 +45,15 @@ class Seq2Seq:
 
 
         self.num_layers     =     2
-        self.embedding_size =   emb_size
-        self.rnn_size       =   512
+        self.rnn_size       =  1024
         self.keep_prob      =   1.0#0.1
         self.vocab_num      =   voc
         self.with_attention =   att
         self.mode           =  mode
         self.lr             =    lr
         self.idx2word   =  idx2word
+        self.embedding_size =   emb_size
+        
 
     def _create_rnn_cell(self):
 
@@ -161,8 +162,8 @@ class Seq2Seq:
 
     def build_optimizer(self):
 
-        #optimizer = tf.train.GradientDescentOptimizer(self.lr)
-        optimizer = tf.train.AdamOptimizer(0.0005)
+        optimizer = tf.train.GradientDescentOptimizer(self.lr)
+        #optimizer = tf.train.AdamOptimizer(0.0005)
         trainable_params = tf.trainable_variables()
         gradients = tf.gradients(self.train_loss, trainable_params)
         clip_gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
@@ -341,7 +342,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.5)
-    parser.add_argument('-mi', '--min_counts', type=int, default=200)
+    parser.add_argument('-mi', '--min_counts', type=int, default=500)
     parser.add_argument('-e', '--num_epochs', type=int, default=100)
     parser.add_argument('-b', '--batch_size', type=int, default=750)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
