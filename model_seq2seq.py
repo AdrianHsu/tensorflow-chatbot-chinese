@@ -29,10 +29,10 @@ tf.set_random_seed(0)
 
 filename = '/clr_conversation.txt'
 total_line_num = 2842478
-train_line_num = 2840000
-eval_line_num  =    2478
+train_line_num = 2830000
+eval_line_num  =   12478
 emb_size       =     250
-PKL_EXIST      =   False
+PKL_EXIST      =    True
 
 max_sentence_length = 15 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -251,7 +251,7 @@ def train():
         global_step = tf.Variable(0, trainable=False)
         lr = tf.train.exponential_decay(FLAGS.learning_rate,
                     global_step=global_step,
-                    decay_steps=8000,decay_rate=0.95)
+                    decay_steps=300,decay_rate=0.95)
         add_global = global_step.assign_add(1)
         model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
             mode=modes['train'], att=FLAGS.with_attention, lr=lr)
@@ -312,8 +312,9 @@ def train():
                  ", Perplexity: " + "{:.4f}".format(perp_eval) + ")", fg='white', bg='green'))
             pbar.set_description("Epoch " + str(epo) + ", step " + str(i) + "/" + \
                     str(num_steps) + "(" + str(current_step) + ")" + \
-                    ", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.4f}".format(perp) + ", Sampling: "+ \
-                    "{:.4f}".format(samp_prob[pt]) + ")" )
+                    #", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.4f}".format(perp) + ", Sampling: "+ \
+                    ", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.4f}".format(perp) + ", lr: "+ \
+                    "{:.6f}".format(print_lr) + ")" )
             if i % int(num_steps / 3) == 0 and i != 0:
                 pt += 1
                 print(color('sampling pt: ' + str( pt ) + '/' + str(total_samp), fg='white', bg='red'))
