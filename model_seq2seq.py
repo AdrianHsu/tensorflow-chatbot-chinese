@@ -162,8 +162,8 @@ class Seq2Seq:
 
     def build_optimizer(self):
 
-        optimizer = tf.train.GradientDescentOptimizer(self.lr)
-        #optimizer = tf.train.AdamOptimizer(0.0005)
+        #optimizer = tf.train.GradientDescentOptimizer(self.lr)
+        optimizer = tf.train.AdamOptimizer(0.00001)
         trainable_params = tf.trainable_variables()
         gradients = tf.gradients(self.train_loss, trainable_params)
         clip_gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
@@ -313,8 +313,8 @@ def train():
             pbar.set_description("Epoch " + str(epo) + ", step " + str(i) + "/" + \
                     str(num_steps) + "(" + str(current_step) + ")" + \
                     #", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.4f}".format(perp) + ", Sampling: "+ \
-                    ", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.4f}".format(perp) + ", lr: "+ \
-                    "{:.6f}".format(print_lr) + ")" )
+                    ", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.4f}".format(perp) + ")")#", lr: "+ \
+                    #"{:.6f}".format(print_lr) + ")" )
             if i % int(num_steps / 3) == 0 and i != 0:
                 pt += 1
                 print(color('sampling pt: ' + str( pt ) + '/' + str(total_samp), fg='white', bg='red'))
