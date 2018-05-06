@@ -164,7 +164,7 @@ class Seq2Seq:
 
         #optimizer = tf.train.GradientDescentOptimizer(self.lr)
         #print('use gradient descent optimizer...')
-        optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
+        optimizer = tf.train.AdamOptimizer(self.lr)
         trainable_params = tf.trainable_variables()
         print(trainable_params)
         gradients = tf.gradients(self.train_loss, trainable_params)
@@ -254,7 +254,7 @@ def train():
         global_step = tf.Variable(0, trainable=False)
         lr = tf.train.exponential_decay(FLAGS.learning_rate,
                     global_step=global_step,
-                    decay_steps=900,decay_rate=0.95)
+                    decay_steps=2600, decay_rate=0.95, staircase=True)
         add_global = global_step.assign_add(1)
         model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
             mode=modes['train'], att=FLAGS.with_attention, lr=lr)
@@ -313,12 +313,11 @@ def train():
                 print(color("Epoch " + str(epo) + ", step " + str(i) + "/" + str(num_steps) + \
                  ", (Evaluation Loss: " + "{:.4f}".format(loss_eval) + \
                  ", Perplexity: " + "{:.4f}".format(perp_eval) + ")", fg='white', bg='green'))
-            pbar.set_description("Epoch " + str(epo) + ", step " + str(i) + "/" + \
+            pbar.set_description("E: " + str(epo) + ", Step " + str(i) + "/" + \
                     str(num_steps) + "(" + str(current_step) + ")" + \
-                    #", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.4f}".format(perp) + ", Sampling: "+ \
+                    ", (Loss: " + "{:.4f}".format(loss) + ", Perp: " + "{:.1f}".format(perp) + ", lr: "+ \
                     #"{:.4f}".format(samp_prob[pt]) + ")" )
-                    ", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.1f}".format(perp)  + ")")#+ ", lr: "+ \
-                    #"{:.8f}".format(print_lr) + ")" )
+                    "{:.12f}".format(print_lr) + ")" )
             if i % int(num_steps / 3) == 0 and i != 0:
                 pt += 1
                 print(color('sampling pt: ' + str( pt ) + '/' + str(total_samp), fg='white', bg='red'))
@@ -346,9 +345,10 @@ def main(_):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-lr', '--learning_rate', type=float, default=0.0005)
-    parser.add_argument('-mi', '--min_counts', type=int, default=50)
-    parser.add_argument('-e', '--num_epochs', type=int, default=500)
+    # 0.0005 * 0.95^((25000/2500) * 30)
+    parser.add_argument('-lr', '--learning_rate', type=float, default=0.0005) # 5*1e-4
+    parser.add_argument('-mi', '--min_counts', type=int, default=10)
+    parser.add_argument('-e', '--num_epochs', type=int, default=30)
     parser.add_argument('-b', '--batch_size', type=int, default=100)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=70)
