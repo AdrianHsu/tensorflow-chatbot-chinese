@@ -29,8 +29,8 @@ tf.set_random_seed(0)
 
 filename = '/clr_conversation.txt'
 total_line_num = 2842478
-train_line_num = 2830000
-eval_line_num  =   12478
+train_line_num = 2840000
+eval_line_num  =    2478
 emb_size       =     250
 PKL_EXIST      =    True
 
@@ -45,8 +45,8 @@ class Seq2Seq:
 
 
         self.num_layers     =     2
-        self.rnn_size       =  1024
-        self.keep_prob      =   1.0#0.1
+        self.rnn_size       =   512
+        self.keep_prob      =   1.0
         self.vocab_num      =   voc
         self.with_attention =   att
         self.mode           =  mode
@@ -164,10 +164,13 @@ class Seq2Seq:
 
         #optimizer = tf.train.GradientDescentOptimizer(self.lr)
         optimizer = tf.train.AdamOptimizer(0.00001)
+        print('use gradient descent optimizer...')
         trainable_params = tf.trainable_variables()
+        print(trainable_params)
         gradients = tf.gradients(self.train_loss, trainable_params)
         clip_gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
         self.train_op = optimizer.apply_gradients(zip(clip_gradients, trainable_params))
+        print(self.train_op)
 
     def train(self, sess, batch, print_pred, summary_writer, add_global, prob):
 
@@ -251,7 +254,7 @@ def train():
         global_step = tf.Variable(0, trainable=False)
         lr = tf.train.exponential_decay(FLAGS.learning_rate,
                     global_step=global_step,
-                    decay_steps=300,decay_rate=0.95)
+                    decay_steps=1250, decay_rate=0.95, staircase=True)
         add_global = global_step.assign_add(1)
         model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
             mode=modes['train'], att=FLAGS.with_attention, lr=lr)
@@ -310,11 +313,11 @@ def train():
                 print(color("Epoch " + str(epo) + ", step " + str(i) + "/" + str(num_steps) + \
                  ", (Evaluation Loss: " + "{:.4f}".format(loss_eval) + \
                  ", Perplexity: " + "{:.4f}".format(perp_eval) + ")", fg='white', bg='green'))
-            pbar.set_description("Epoch " + str(epo) + ", step " + str(i) + "/" + \
+            pbar.set_description("Step " + str(i) + "/" + \
                     str(num_steps) + "(" + str(current_step) + ")" + \
                     #", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.4f}".format(perp) + ", Sampling: "+ \
                     ", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.4f}".format(perp) + ")")#", lr: "+ \
-                    #"{:.6f}".format(print_lr) + ")" )
+                    #"{:.4f}".format(samp_prob[pt]) + ")" )
             if i % int(num_steps / 3) == 0 and i != 0:
                 pt += 1
                 print(color('sampling pt: ' + str( pt ) + '/' + str(total_samp), fg='white', bg='red'))
@@ -342,13 +345,14 @@ def main(_):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-lr', '--learning_rate', type=float, default=0.5)
-    parser.add_argument('-mi', '--min_counts', type=int, default=500)
-    parser.add_argument('-e', '--num_epochs', type=int, default=100)
-    parser.add_argument('-b', '--batch_size', type=int, default=750)
+    # 0.0005 * 0.95^((25000/2500) * 30)
+    parser.add_argument('-lr', '--learning_rate', type=float, default=0.5) # 5*1e-4
+    parser.add_argument('-mi', '--min_counts', type=int, default=30)
+    parser.add_argument('-e', '--num_epochs', type=int, default=30)
+    parser.add_argument('-b', '--batch_size', type=int, default=100)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
-    parser.add_argument('-d', '--num_display_steps', type=int, default=30)
-    parser.add_argument('-ns', '--num_saver_steps', type=int, default=70)
+    parser.add_argument('-d', '--num_display_steps', type=int, default=70)
+    parser.add_argument('-ns', '--num_saver_steps', type=int, default=100)
     parser.add_argument('-s', '--save_dir', type=str, default='save/')
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
     parser.add_argument('-o', '--output_filename', type=str, default='output.txt')
