@@ -32,7 +32,7 @@ total_line_num = 2842478
 train_line_num = 2840000
 eval_line_num  =    2478
 emb_size       =     250
-PKL_EXIST      =   False
+PKL_EXIST      =    True
 
 max_sentence_length = 15 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -45,7 +45,7 @@ class Seq2Seq:
 
 
         self.num_layers     =     2
-        self.rnn_size       =  1024
+        self.rnn_size       =   512
         self.keep_prob      =   1.0
         self.vocab_num      =   voc
         self.with_attention =   att
@@ -162,9 +162,9 @@ class Seq2Seq:
 
     def build_optimizer(self):
 
-        #optimizer = tf.train.GradientDescentOptimizer(self.lr)
-        #print('use gradient descent optimizer...')
-        optimizer = tf.train.AdamOptimizer(self.lr)
+        optimizer = tf.train.GradientDescentOptimizer(self.lr)
+        print('use gradient descent optimizer...')
+        #optimizer = tf.train.AdamOptimizer(self.lr)
         trainable_params = tf.trainable_variables()
         print(trainable_params)
         gradients = tf.gradients(self.train_loss, trainable_params)
@@ -254,7 +254,7 @@ def train():
         global_step = tf.Variable(0, trainable=False)
         lr = tf.train.exponential_decay(FLAGS.learning_rate,
                     global_step=global_step,
-                    decay_steps=2500, decay_rate=0.95, staircase=True)
+                    decay_steps=1250, decay_rate=0.95, staircase=True)
         add_global = global_step.assign_add(1)
         model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
             mode=modes['train'], att=FLAGS.with_attention, lr=lr)
@@ -313,7 +313,7 @@ def train():
                 print(color("Epoch " + str(epo) + ", step " + str(i) + "/" + str(num_steps) + \
                  ", (Evaluation Loss: " + "{:.4f}".format(loss_eval) + \
                  ", Perplexity: " + "{:.4f}".format(perp_eval) + ")", fg='white', bg='green'))
-            pbar.set_description("E: " + str(epo) + ", Step " + str(i) + "/" + \
+            pbar.set_description("Step " + str(i) + "/" + \
                     str(num_steps) + "(" + str(current_step) + ")" + \
                     ", (Loss: " + "{:.4f}".format(loss) + ", Perp: " + "{:.1f}".format(perp) + ", lr: "+ \
                     #"{:.4f}".format(samp_prob[pt]) + ")" )
@@ -346,7 +346,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     # 0.0005 * 0.95^((25000/2500) * 30)
-    parser.add_argument('-lr', '--learning_rate', type=float, default=0.0005) # 5*1e-4
+    parser.add_argument('-lr', '--learning_rate', type=float, default=0.5) # 5*1e-4
     parser.add_argument('-mi', '--min_counts', type=int, default=30)
     parser.add_argument('-e', '--num_epochs', type=int, default=30)
     parser.add_argument('-b', '--batch_size', type=int, default=100)
