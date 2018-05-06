@@ -45,7 +45,7 @@ class Seq2Seq:
 
 
         self.num_layers     =     2
-        self.rnn_size       =   512
+        self.rnn_size       =  1024
         self.keep_prob      =   1.0
         self.vocab_num      =   voc
         self.with_attention =   att
@@ -254,7 +254,7 @@ def train():
         global_step = tf.Variable(0, trainable=False)
         lr = tf.train.exponential_decay(FLAGS.learning_rate,
                     global_step=global_step,
-                    decay_steps=2600, decay_rate=0.95, staircase=True)
+                    decay_steps=2500, decay_rate=0.95, staircase=True)
         add_global = global_step.assign_add(1)
         model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
             mode=modes['train'], att=FLAGS.with_attention, lr=lr)
@@ -347,7 +347,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # 0.0005 * 0.95^((25000/2500) * 30)
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.0005) # 5*1e-4
-    parser.add_argument('-mi', '--min_counts', type=int, default=10)
+    parser.add_argument('-mi', '--min_counts', type=int, default=30)
     parser.add_argument('-e', '--num_epochs', type=int, default=30)
     parser.add_argument('-b', '--batch_size', type=int, default=100)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
