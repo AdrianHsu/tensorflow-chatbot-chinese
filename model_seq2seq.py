@@ -29,10 +29,10 @@ tf.set_random_seed(0)
 
 filename = '/clr_conversation.txt'
 total_line_num = 2842478
-train_line_num = 2830000
-eval_line_num  =   12478
+train_line_num = 2840000
+eval_line_num  =    2478
 emb_size       =     250
-PKL_EXIST      =    True
+PKL_EXIST      =   False
 
 max_sentence_length = 15 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -45,7 +45,7 @@ class Seq2Seq:
 
 
         self.num_layers     =     2
-        self.rnn_size       =  1024
+        self.rnn_size       =   512
         self.keep_prob      =   1.0
         self.vocab_num      =   voc
         self.with_attention =   att
@@ -162,9 +162,9 @@ class Seq2Seq:
 
     def build_optimizer(self):
 
-        optimizer = tf.train.GradientDescentOptimizer(self.lr)
-        print('use gradient descent optimizer...')
-        #optimizer = tf.train.AdamOptimizer(0.0005)
+        #optimizer = tf.train.GradientDescentOptimizer(self.lr)
+        #print('use gradient descent optimizer...')
+        optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
         trainable_params = tf.trainable_variables()
         print(trainable_params)
         gradients = tf.gradients(self.train_loss, trainable_params)
@@ -317,8 +317,8 @@ def train():
                     str(num_steps) + "(" + str(current_step) + ")" + \
                     #", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.4f}".format(perp) + ", Sampling: "+ \
                     #"{:.4f}".format(samp_prob[pt]) + ")" )
-                    ", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.1f}".format(perp) + ", lr: "+ \
-                    "{:.8f}".format(print_lr) + ")" )
+                    ", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.1f}".format(perp)  + ")")#+ ", lr: "+ \
+                    #"{:.8f}".format(print_lr) + ")" )
             if i % int(num_steps / 3) == 0 and i != 0:
                 pt += 1
                 print(color('sampling pt: ' + str( pt ) + '/' + str(total_samp), fg='white', bg='red'))
@@ -346,13 +346,13 @@ def main(_):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-lr', '--learning_rate', type=float, default=0.005)
-    parser.add_argument('-mi', '--min_counts', type=int, default=500)
-    parser.add_argument('-e', '--num_epochs', type=int, default=100)
-    parser.add_argument('-b', '--batch_size', type=int, default=128)
+    parser.add_argument('-lr', '--learning_rate', type=float, default=0.0005)
+    parser.add_argument('-mi', '--min_counts', type=int, default=50)
+    parser.add_argument('-e', '--num_epochs', type=int, default=500)
+    parser.add_argument('-b', '--batch_size', type=int, default=100)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
-    parser.add_argument('-d', '--num_display_steps', type=int, default=30)
-    parser.add_argument('-ns', '--num_saver_steps', type=int, default=70)
+    parser.add_argument('-d', '--num_display_steps', type=int, default=70)
+    parser.add_argument('-ns', '--num_saver_steps', type=int, default=100)
     parser.add_argument('-s', '--save_dir', type=str, default='save/')
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
     parser.add_argument('-o', '--output_filename', type=str, default='output.txt')
