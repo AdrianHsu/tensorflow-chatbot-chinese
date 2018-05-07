@@ -32,8 +32,8 @@ total_line_num = 2842478
 train_line_num = 2840000
 eval_line_num  =    2478
 
-emb_size       =     250
-PKL_EXIST      =    True
+emb_size       =     300
+PKL_EXIST      =   False
 
 max_sentence_length = 15 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -167,7 +167,7 @@ class Seq2Seq:
 
         #optimizer = tf.train.GradientDescentOptimizer(0.005)
         #print('use gradient descent optimizer...')
-        optimizer = tf.train.AdamOptimizer()#.minimize(self.train_loss)
+        optimizer = tf.train.AdamOptimizer(0.001)#.minimize(self.train_loss)
         #self.train_op = optimizer
         trainable_params = tf.trainable_variables()
         print(trainable_params)
@@ -357,14 +357,13 @@ def main(_):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    # 0.0005 * 0.95^((25000/2500) * 30)
-    parser.add_argument('-lr', '--learning_rate', type=float, default=0.0005) # 5*1e-4
+    parser.add_argument('-lr', '--learning_rate', type=float, default=0.001) 
     parser.add_argument('-mi', '--min_counts', type=int, default=25)
     parser.add_argument('-e', '--num_epochs', type=int, default=100)
     parser.add_argument('-b', '--batch_size', type=int, default=32)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
-    parser.add_argument('-d', '--num_display_steps', type=int, default=70)
-    parser.add_argument('-ns', '--num_saver_steps', type=int, default=100)
+    parser.add_argument('-d', '--num_display_steps', type=int, default=200)
+    parser.add_argument('-ns', '--num_saver_steps', type=int, default=300)
     parser.add_argument('-s', '--save_dir', type=str, default='save/')
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
     parser.add_argument('-o', '--output_filename', type=str, default='output.txt')
