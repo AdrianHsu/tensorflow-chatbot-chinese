@@ -22,6 +22,11 @@ random.seed(0)
 np.random.seed(0)
 tf.set_random_seed(0)
 
+#filename = '/tmp'
+#total_line_num =    100
+#train_line_num =     80
+#eval_line_num  =     20
+
 #filename = '/xaa'
 #total_line_num = 50000
 #train_line_num = 45000
@@ -170,13 +175,10 @@ class Seq2Seq:
         optimizer = tf.train.AdamOptimizer(0.001)#.minimize(self.train_loss)
         #self.train_op = optimizer
         trainable_params = tf.trainable_variables()
-        print(trainable_params)
         gradients = tf.gradients(self.train_loss, trainable_params)
         gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
         gradients = list(zip(gradients, trainable_params))
-        print(gradients)
         self.train_op = optimizer.apply_gradients(gradients)
-        print(self.train_op)
 
         for grad, var in gradients:
             self.hist_summary.append(tf.summary.histogram(var.name + '/gradient', grad))
@@ -216,10 +218,10 @@ class Seq2Seq:
                       self.batch_size: len(batch.encoder_inputs)}
         loss, pred, summary = sess.run([self.eval_loss, 
             self.decoder_predict_eval, self.eval_summary], feed_dict=feed_dict)
+        
         print_num = 3
-       
-
-        print_more = np.random.randint(len(batch.encoder_inputs), size=(print_num))
+        print_more = random.sample(range(len(batch.encoder_inputs)), print_num)
+        #repeat bug: np.random.randint(len(batch.encoder_inputs), size=(print_num))
         for i in print_more:
             util.decoder_print(self.idx2word, batch.encoder_inputs[i], batch.encoder_inputs_length[i],
                 batch.decoder_targets[i], batch.decoder_targets_length[i], pred[i], 'green')

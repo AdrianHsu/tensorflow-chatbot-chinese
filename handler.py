@@ -109,7 +109,7 @@ class DatasetBase:
             else:
                 d_list = np.concatenate((self.data[ptr:max_size] , self.data[0:right]), axis=0)
             self.ptr = right
-
+        
         return self.create_batch(d_list, batch_size)
 
     def create_batch(self, samples, batch_size):
