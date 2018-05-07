@@ -45,7 +45,7 @@ class Seq2Seq:
 
 
         self.num_layers     =     2
-        self.rnn_size       =   512
+        self.rnn_size       =  1024
         self.keep_prob      =   1.0
         self.vocab_num      =   voc
         self.with_attention =   att
@@ -58,7 +58,8 @@ class Seq2Seq:
     def _create_rnn_cell(self):
 
         def single_rnn_cell():
-            cell = tf.contrib.rnn.LSTMCell(self.rnn_size, initializer = tf.orthogonal_initializer())
+            #cell = tf.contrib.rnn.GRUCell(self.rnn_size)
+            cell = tf.contrib.rnn.LSTMCell(self.rnn_size, initializer=tf.orthogonal_initializer())
             if self.mode == modes['train']:
                 cell = tf.contrib.rnn.DropoutWrapper(cell, input_keep_prob=self.keep_prob, 
                         output_keep_prob=self.keep_prob)
@@ -72,7 +73,8 @@ class Seq2Seq:
         self.encoder_inputs_length = tf.placeholder(tf.int32, [None], name='encoder_inputs_length')
 
         embedding = tf.get_variable(
-            initializer=tf.constant(emb), dtype=tf.float32, trainable=True, name='embedding')
+             initializer=tf.constant(emb), dtype=tf.float32, trainable=True, name='embedding')
+        #embedding = tf.get_variable('embedding', [self.vocab_size, self.embedding_size])
 
         self.batch_size = tf.placeholder(tf.int32, [], name='batch_size')
 
@@ -141,14 +143,12 @@ class Seq2Seq:
                 inference_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=decoding_helper,
                                                                         initial_state=decoder_initial_state,
                                                                         output_layer=projection_layer)
-                decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
+                decoder_outputs, _, final_seq_len = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
                                                                 maximum_iterations=self.max_target_sequence_length)
                 # pad to same shape in order to calculate loss
                 pad_decoder_targets = tf.identity(self.decoder_targets)
-                pad_rnn_output = tf.identity(decoder_outputs.rnn_output)
-                pad = tf.zeros([batch_size, tf.shape(pad_decoder_targets)[1] - tf.shape(pad_rnn_output)[1],
-                    self.vocab_num], dtype=tf.float32)
-                pad_rnn_output = tf.concat([pad_rnn_output, pad], axis=1)
+                pad_size = self.max_target_sequence_length - tf.reduce_max(final_seq_len)
+                pad_rnn_output = tf.pad(decoder_outputs.rnn_output, [[0, 0], [0, pad_size], [0, 0]])
                 
                #  self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_logits_eval = tf.identity(pad_rnn_output)
@@ -163,14 +163,15 @@ class Seq2Seq:
     def build_optimizer(self):
 
         #optimizer = tf.train.GradientDescentOptimizer(self.lr)
-        optimizer = tf.train.AdamOptimizer(0.00001)
-        print('use gradient descent optimizer...')
-        trainable_params = tf.trainable_variables()
-        print(trainable_params)
-        gradients = tf.gradients(self.train_loss, trainable_params)
-        clip_gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
-        self.train_op = optimizer.apply_gradients(zip(clip_gradients, trainable_params))
-        print(self.train_op)
+        #print('use gradient descent optimizer...')
+        optimizer = tf.train.AdamOptimizer().minimize(self.train_loss)
+        self.train_op = optimizer
+        #trainable_params = tf.trainable_variables()
+        #print(trainable_params)
+        #gradients = tf.gradients(self.train_loss, trainable_params)
+        #clip_gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
+        #self.train_op = optimizer.apply_gradients(zip(clip_gradients, trainable_params))
+        #print(self.train_op)
 
     def train(self, sess, batch, print_pred, summary_writer, add_global, prob):
 
@@ -346,10 +347,10 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     # 0.0005 * 0.95^((25000/2500) * 30)
-    parser.add_argument('-lr', '--learning_rate', type=float, default=0.5) # 5*1e-4
-    parser.add_argument('-mi', '--min_counts', type=int, default=30)
-    parser.add_argument('-e', '--num_epochs', type=int, default=30)
-    parser.add_argument('-b', '--batch_size', type=int, default=100)
+    parser.add_argument('-lr', '--learning_rate', type=float, default=0.0005) # 5*1e-4
+    parser.add_argument('-mi', '--min_counts', type=int, default=500)
+    parser.add_argument('-e', '--num_epochs', type=int, default=100)
+    parser.add_argument('-b', '--batch_size', type=int, default=32)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=70)
     parser.add_argument('-ns', '--num_saver_steps', type=int, default=100)
