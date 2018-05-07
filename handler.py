@@ -73,9 +73,9 @@ class DatasetBase:
                 init = False
             else:
                 _out = idx_list
-                _rev_in = list(reversed(_in))
+                #_rev_in = list(reversed(_in))
                 # (the first EOS is part of the loss)
-                self.data.append([_rev_in, _out + [special_tokens['<EOS>']]])
+                self.data.append([_in , _out + [special_tokens['<EOS>']]])
                 _in = idx_list
             if i % 100000 == 0:
                 print("building data list: " + str(i) + "/" + str(len(data)) + " done.")
@@ -121,11 +121,13 @@ class DatasetBase:
         for sample in samples:
             source = sample[0]
             pad = [special_tokens['<PAD>']] * (max_source_length - len(source))
-            batch.encoder_inputs.append(pad + source)
+            #batch.encoder_inputs.append(pad + source)
+            batch.encoder_inputs.append(source + pad)
 
             target = sample[1]
             pad = [special_tokens['<PAD>']] * (max_target_length - len(target))
             batch.decoder_targets.append(target + pad)
+        
         return batch
 
     def load_dict(self): # for datasetEval
@@ -154,10 +156,10 @@ class DatasetTrain(DatasetBase):
         file = open(file_path, 'r')
 
         raw_line = []
-        raw_line.append(['<PAD>'] * 299999) #2999999
+        raw_line.append(['<PAD>'] * 2999999) #299999
         raw_line.append(['<BOS>'] * 100)
         raw_line.append(['<EOS>'] * 50)
-        raw_line.append(['<UNK>'] *  39999) #999999
+        raw_line.append(['<UNK>'] *  999999) #39999
 
 
         train_data = []
@@ -239,7 +241,8 @@ class DatasetTest(DatasetBase):
                 continue
             sent = text_to_word_sequence(line, lower=True, split=" ")
             _in = self.sentence_to_idx(sent)
-            self.test_data.append(list(reversed(_in)))
+            #self.test_data.append(list(reversed(_in)))
+            self.test_data.append(_in)
 
         print('test data num: ', len(self.test_data))
 
