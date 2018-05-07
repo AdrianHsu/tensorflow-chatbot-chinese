@@ -22,17 +22,18 @@ random.seed(0)
 np.random.seed(0)
 tf.set_random_seed(0)
 
-#filename = '/xaa'
-#total_line_num = 50000
-#train_line_num = 45000
-#eval_line_num  =  5000
+filename = '/xaa'
+total_line_num = 50000
+train_line_num = 45000
+eval_line_num  =  5000
 
-filename = '/clr_conversation.txt'
-total_line_num = 2842478
-train_line_num = 2840000
-eval_line_num  =    2478
+#filename = '/clr_conversation.txt'
+#total_line_num = 2842478
+#train_line_num = 2840000
+#eval_line_num  =    2478
+
 emb_size       =     250
-PKL_EXIST      =    True
+PKL_EXIST      =   False
 
 max_sentence_length = 15 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -53,6 +54,7 @@ class Seq2Seq:
         self.lr             =    lr
         self.idx2word   =  idx2word
         self.embedding_size =   emb_size
+        self.hist_summary   =    []
         
 
     def _create_rnn_cell(self):
@@ -72,9 +74,10 @@ class Seq2Seq:
         self.encoder_inputs = tf.placeholder(tf.int32, [None, None], name='encoder_inputs')
         self.encoder_inputs_length = tf.placeholder(tf.int32, [None], name='encoder_inputs_length')
 
-        embedding = tf.get_variable(
-             initializer=tf.constant(emb), dtype=tf.float32, trainable=True, name='embedding')
-        #embedding = tf.get_variable('embedding', [self.vocab_size, self.embedding_size])
+        #embedding = tf.get_variable(
+        #     initializer=tf.constant(emb), dtype=tf.float32, trainable=True, name='embedding')
+        embedding = tf.get_variable('embedding', [self.vocab_num, self.embedding_size])
+        self.hist_summary.append(tf.summary.histogram(embedding.name + '/embed', embedding))
 
         self.batch_size = tf.placeholder(tf.int32, [], name='batch_size')
 
@@ -162,16 +165,24 @@ class Seq2Seq:
 
     def build_optimizer(self):
 
-        #optimizer = tf.train.GradientDescentOptimizer(self.lr)
+        #optimizer = tf.train.GradientDescentOptimizer(0.005)
         #print('use gradient descent optimizer...')
-        optimizer = tf.train.AdamOptimizer().minimize(self.train_loss)
-        self.train_op = optimizer
-        #trainable_params = tf.trainable_variables()
-        #print(trainable_params)
-        #gradients = tf.gradients(self.train_loss, trainable_params)
-        #clip_gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
-        #self.train_op = optimizer.apply_gradients(zip(clip_gradients, trainable_params))
-        #print(self.train_op)
+        optimizer = tf.train.AdamOptimizer()#.minimize(self.train_loss)
+        #self.train_op = optimizer
+        trainable_params = tf.trainable_variables()
+        print(trainable_params)
+        gradients = tf.gradients(self.train_loss, trainable_params)
+        #gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
+        gradients = list(zip(gradients, trainable_params))
+        print(gradients)
+        self.train_op = optimizer.apply_gradients(gradients)
+        print(self.train_op)
+
+        for grad, var in gradients:
+            self.hist_summary.append(tf.summary.histogram(var.name + '/gradient', grad))
+        
+        self.hist_summary.append(self.train_summary)
+        self.train_summary = tf.summary.merge(self.hist_summary)
 
     def train(self, sess, batch, print_pred, summary_writer, add_global, prob):
 
@@ -348,7 +359,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # 0.0005 * 0.95^((25000/2500) * 30)
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.0005) # 5*1e-4
-    parser.add_argument('-mi', '--min_counts', type=int, default=500)
+    parser.add_argument('-mi', '--min_counts', type=int, default=5)
     parser.add_argument('-e', '--num_epochs', type=int, default=100)
     parser.add_argument('-b', '--batch_size', type=int, default=32)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
