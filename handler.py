@@ -60,7 +60,7 @@ class DatasetBase:
                 continue
 
             sent = text_to_word_sequence(data[i], lower=True, split=' ')
-            if len(sent) > 15 or len(sent) < 3: # too long
+            if len(sent) > 10 or len(sent) <= 3: # too long
                 init = True
                 continue
             idx_list = self.sentence_to_idx(sent)

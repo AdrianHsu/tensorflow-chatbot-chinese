@@ -50,8 +50,8 @@ class Seq2Seq:
     def __init__(self, voc, idx2word, mode, att, lr=None):
 
 
-        self.num_layers     =     2
-        self.rnn_size       =  1024
+        self.num_layers     =     1
+        self.rnn_size       =   512
         self.keep_prob      =   1.0
         self.vocab_num      =   voc
         self.with_attention =   att
@@ -360,12 +360,12 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.001) 
-    parser.add_argument('-mi', '--min_counts', type=int, default=25)
+    parser.add_argument('-mi', '--min_counts', type=int, default=100)
     parser.add_argument('-e', '--num_epochs', type=int, default=100)
     parser.add_argument('-b', '--batch_size', type=int, default=32)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
-    parser.add_argument('-d', '--num_display_steps', type=int, default=200)
-    parser.add_argument('-ns', '--num_saver_steps', type=int, default=300)
+    parser.add_argument('-d', '--num_display_steps', type=int, default=100)
+    parser.add_argument('-ns', '--num_saver_steps', type=int, default=150)
     parser.add_argument('-s', '--save_dir', type=str, default='save/')
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
     parser.add_argument('-o', '--output_filename', type=str, default='output.txt')
