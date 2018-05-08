@@ -38,7 +38,7 @@ train_line_num = 2840000
 eval_line_num  =    2478
 
 emb_size       =     300
-PKL_EXIST      =    True
+PKL_EXIST      =   False
 
 MAX_SENTENCE_LENGTH = 15 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -444,7 +444,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.001) 
-    parser.add_argument('-mi', '--min_counts', type=int, default=100)
+    parser.add_argument('-mi', '--min_counts', type=int, default=50)
     parser.add_argument('-e', '--num_epochs', type=int, default=100)
     parser.add_argument('-b', '--batch_size', type=int, default=250)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
