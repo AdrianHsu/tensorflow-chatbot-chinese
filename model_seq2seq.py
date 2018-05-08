@@ -38,7 +38,7 @@ train_line_num = 2840000
 eval_line_num  =    2478
 
 emb_size       =     300
-PKL_EXIST      =   False
+PKL_EXIST      =    True
 
 max_sentence_length = 15 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -50,7 +50,7 @@ class Seq2Seq:
     def __init__(self, voc, idx2word, mode, att, lr=None):
 
 
-        self.num_layers     =     1
+        self.num_layers     =     2
         self.rnn_size       =   512
         self.keep_prob      =   1.0
         self.vocab_num      =   voc
@@ -79,8 +79,9 @@ class Seq2Seq:
         self.encoder_inputs = tf.placeholder(tf.int32, [None, None], name='encoder_inputs')
         self.encoder_inputs_length = tf.placeholder(tf.int32, [None], name='encoder_inputs_length')
 
+        emb = tf.convert_to_tensor(emb, dtype=tf.float32)
         embedding = tf.get_variable(
-             initializer=tf.constant(emb), dtype=tf.float32, trainable=True, name='embedding')
+             initializer=emb, dtype=tf.float32, trainable=True, name='embedding')
         #embedding = tf.get_variable('embedding', [self.vocab_num, self.embedding_size])
         self.hist_summary.append(tf.summary.histogram(embedding.name + '/embed', embedding))
 
@@ -118,7 +119,7 @@ class Seq2Seq:
             else:
                 decoder_initial_state = encoder_state
             projection_layer = tf.layers.Dense(
-                    self.vocab_num, kernel_initializer=tf.truncated_normal_initializer())
+                    self.vocab_num, kernel_initializer=tf.truncated_normal_initializer(mean=0.0, stddev=0.1))
 
             if self.mode == modes['train']:
                 ending = tf.strided_slice(self.decoder_targets, [0, 0], [self.batch_size, -1], [1, 1])
@@ -167,6 +168,7 @@ class Seq2Seq:
                 self.eval_summary = tf.summary.scalar('validation loss', self.eval_loss)
 
 #            elif self.mode == modes['test']:
+        self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=3)
 
     def build_optimizer(self):
 
@@ -176,7 +178,7 @@ class Seq2Seq:
         #self.train_op = optimizer
         trainable_params = tf.trainable_variables()
         gradients = tf.gradients(self.train_loss, trainable_params)
-        gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
+        gradients, _ = tf.clip_by_global_norm(gradients, 50.0)
         gradients = list(zip(gradients, trainable_params))
         self.train_op = optimizer.apply_gradients(gradients)
 
@@ -255,6 +257,7 @@ def train():
     unk = np.random.normal(size=[emb_size])
     embeddings[0] = pad
     embeddings[3] = unk
+    #print(embeddings)
 
     np.save('embeddings.npy', embeddings)
     train_graph = tf.Graph()
@@ -274,7 +277,7 @@ def train():
             mode=modes['train'], att=FLAGS.with_attention, lr=lr)
         model.build_model(embeddings)
         model.build_optimizer()
-        model.saver = tf.train.Saver(max_to_keep = 3)
+        #model.saver = tf.train.Saver(max_to_keep = 3)
         init = tf.global_variables_initializer()
     train_sess = tf.Session(graph=train_graph, config=gpu_config)
 
@@ -283,7 +286,7 @@ def train():
         model_eval = Seq2Seq(voc=datasetEval.vocab_num, idx2word=datasetEval.idx2word,
             mode=modes['eval'], att=FLAGS.with_attention)
         model_eval.build_model(embeddings)
-        model_eval.saver = tf.train.Saver(max_to_keep = 3)
+        #model_eval.saver = tf.train.Saver(max_to_keep = 3)
     eval_sess = tf.Session(graph=eval_graph, config=gpu_config)
 
 
@@ -362,10 +365,10 @@ if __name__ == '__main__':
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.001) 
     parser.add_argument('-mi', '--min_counts', type=int, default=100)
     parser.add_argument('-e', '--num_epochs', type=int, default=100)
-    parser.add_argument('-b', '--batch_size', type=int, default=32)
+    parser.add_argument('-b', '--batch_size', type=int, default=100)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
-    parser.add_argument('-d', '--num_display_steps', type=int, default=100)
-    parser.add_argument('-ns', '--num_saver_steps', type=int, default=150)
+    parser.add_argument('-d', '--num_display_steps', type=int, default=50)
+    parser.add_argument('-ns', '--num_saver_steps', type=int, default=80)
     parser.add_argument('-s', '--save_dir', type=str, default='save/')
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
     parser.add_argument('-o', '--output_filename', type=str, default='output.txt')
