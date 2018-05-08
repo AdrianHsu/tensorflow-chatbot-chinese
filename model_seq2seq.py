@@ -79,9 +79,10 @@ class Seq2Seq:
         self.encoder_inputs = tf.placeholder(tf.int32, [None, None], name='encoder_inputs')
         self.encoder_inputs_length = tf.placeholder(tf.int32, [None], name='encoder_inputs_length')
 
-        emb = tf.convert_to_tensor(emb, dtype=tf.float32)
-        embedding = tf.get_variable(
-             initializer=emb, dtype=tf.float32, trainable=True, name='embedding')
+        with tf.device("/cpu:0"):
+            emb = tf.convert_to_tensor(emb, dtype=tf.float32)
+            embedding = tf.get_variable(
+                initializer=emb, dtype=tf.float32, trainable=True, name='embedding')
         #embedding = tf.get_variable('embedding', [self.vocab_num, self.embedding_size])
         self.hist_summary.append(tf.summary.histogram(embedding.name + '/embed', embedding))
 
@@ -98,7 +99,8 @@ class Seq2Seq:
 
         with tf.variable_scope('encoder'):
             encoder_cell = self._create_rnn_cell()
-            encoder_inputs_embedded = tf.nn.embedding_lookup(embedding, self.encoder_inputs)
+            with tf.device("/cpu:0"):
+                encoder_inputs_embedded = tf.nn.embedding_lookup(embedding, self.encoder_inputs)
             encoder_outputs, encoder_state = tf.nn.dynamic_rnn(encoder_cell, encoder_inputs_embedded,
                                                                sequence_length=self.encoder_inputs_length,
                                                                dtype=tf.float32)
@@ -124,7 +126,8 @@ class Seq2Seq:
             if self.mode == modes['train']:
                 ending = tf.strided_slice(self.decoder_targets, [0, 0], [self.batch_size, -1], [1, 1])
                 decoder_input = tf.concat([tf.fill([self.batch_size, 1], special_tokens['<BOS>']), ending], 1)
-                decoder_inputs_embedded = tf.nn.embedding_lookup(embedding, decoder_input)
+                with tf.device("/cpu:0"):
+                    decoder_inputs_embedded = tf.nn.embedding_lookup(embedding, decoder_input)
                 training_helper = tf.contrib.seq2seq.ScheduledEmbeddingTrainingHelper(
                                                                     inputs=decoder_inputs_embedded,
                                                                     sequence_length=self.decoder_targets_length,
@@ -168,6 +171,7 @@ class Seq2Seq:
                 self.eval_summary = tf.summary.scalar('validation loss', self.eval_loss)
 
 #            elif self.mode == modes['test']:
+        #print(tf.global_variables())
         self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=3)
 
     def build_optimizer(self):
@@ -178,7 +182,7 @@ class Seq2Seq:
         #self.train_op = optimizer
         trainable_params = tf.trainable_variables()
         gradients = tf.gradients(self.train_loss, trainable_params)
-        gradients, _ = tf.clip_by_global_norm(gradients, 50.0)
+        gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
         gradients = list(zip(gradients, trainable_params))
         self.train_op = optimizer.apply_gradients(gradients)
 
@@ -365,7 +369,7 @@ if __name__ == '__main__':
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.001) 
     parser.add_argument('-mi', '--min_counts', type=int, default=100)
     parser.add_argument('-e', '--num_epochs', type=int, default=100)
-    parser.add_argument('-b', '--batch_size', type=int, default=100)
+    parser.add_argument('-b', '--batch_size', type=int, default=250)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=50)
     parser.add_argument('-ns', '--num_saver_steps', type=int, default=80)
