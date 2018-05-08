@@ -36,7 +36,7 @@ class DatasetBase:
         self.perm = []
         self.ptr = 0
 
-    def sentence_to_idx(self, sent):
+    def sentence_to_idx(self, sent, is_test=False):
         l = []
         unk_num = 0.0
         for word in sent:
@@ -45,7 +45,7 @@ class DatasetBase:
             else:
                 l.append(special_tokens['<UNK>'])
                 unk_num += 1
-        if unk_num > 1.0: #unk_num / float(len(sent)) >= 0.4:
+        if unk_num > 1.0 and not is_test: #unk_num / float(len(sent)) >= 0.4:
             emp = []
             return emp
 
@@ -222,7 +222,7 @@ class DatasetEval(DatasetBase):
 class DatasetTest(DatasetBase):
     def __init__(self):
         super().__init__()
-        test_data = []
+        self.test_data = []
 
     def load_test_line(self, data_dir, filename):
         file_path = data_dir + filename
@@ -232,7 +232,40 @@ class DatasetTest(DatasetBase):
         for line in file:
             test_data.append(line)
         return test_data
+    
+    def next_batch(self, batch_size):
 
+        ptr = self.ptr
+        max_size = len(self.test_data)
+        if ptr + batch_size <= max_size:
+            d_list = self.test_data[ptr:(ptr + batch_size)]
+            self.ptr += batch_size
+        else:
+            print('warning!! over boundary')
+            right = batch_size - (max_size - ptr)
+            d_list = np.concatenate((self.test_data[ptr:max_size] , self.test_data[0:right]), axis=0)
+            self.ptr = right
+        
+        return self.create_batch(d_list, batch_size)
+
+    def create_batch(self, samples, batch_size):
+        batch = Batch(batch_size)
+        batch.encoder_inputs_length = [len(sample) for sample in samples]
+        #batch.decoder_targets_length = [len(sample[1]) for sample in samples]
+        max_source_length = max(batch.encoder_inputs_length)
+        #max_target_length = max(batch.decoder_targets_length)
+        for sample in samples:
+            source = sample
+            pad = [special_tokens['<PAD>']] * (max_source_length - len(source))
+            #batch.encoder_inputs.append(pad + source)
+            batch.encoder_inputs.append(source + pad)
+
+            #target = sample[1]
+            #pad = [special_tokens['<PAD>']] * (max_target_length - len(target))
+            #batch.decoder_targets.append(target + pad)
+        
+        return batch
+    
     def prep(self, data):
         for i in range(len(data)):
             line = data[i]
@@ -240,7 +273,7 @@ class DatasetTest(DatasetBase):
             if len(reg) == 0:
                 continue
             sent = text_to_word_sequence(line, lower=True, split=" ")
-            _in = self.sentence_to_idx(sent)
+            _in = self.sentence_to_idx(sent, is_test=True)
             #self.test_data.append(list(reversed(_in)))
             self.test_data.append(_in)
 

@@ -38,9 +38,9 @@ train_line_num = 2840000
 eval_line_num  =    2478
 
 emb_size       =     300
-PKL_EXIST      =   False
+PKL_EXIST      =    True
 
-max_sentence_length = 15 # longest
+MAX_SENTENCE_LENGTH = 10 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
 special_tokens_to_word = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
 
@@ -87,15 +87,14 @@ class Seq2Seq:
         self.hist_summary.append(tf.summary.histogram(embedding.name + '/embed', embedding))
 
         self.batch_size = tf.placeholder(tf.int32, [], name='batch_size')
-
-        self.decoder_targets = tf.placeholder(tf.int32, [None, None], name='decoder_targets')
-        self.decoder_targets_length = tf.placeholder(tf.int32, [None], name='decoder_targets_length')
         self.sampling_prob = tf.placeholder(tf.float32, [], name='sampling_prob')
 
-
-        self.max_target_sequence_length = tf.reduce_max(self.decoder_targets_length, name='max_target_len')
-        self.mask = tf.sequence_mask(self.decoder_targets_length, self.max_target_sequence_length, 
-            dtype=tf.float32, name='masks')
+        if self.mode != modes['test']:
+            self.decoder_targets = tf.placeholder(tf.int32, [None, None], name='decoder_targets')
+            self.decoder_targets_length = tf.placeholder(tf.int32, [None], name='decoder_targets_length')
+            self.max_target_sequence_length = tf.reduce_max(self.decoder_targets_length, name='max_target_len')
+            self.mask = tf.sequence_mask(self.decoder_targets_length, self.max_target_sequence_length, 
+                dtype=tf.float32, name='masks')
 
         with tf.variable_scope('encoder'):
             encoder_cell = self._create_rnn_cell()
@@ -170,7 +169,21 @@ class Seq2Seq:
 
                 self.eval_summary = tf.summary.scalar('validation loss', self.eval_loss)
 
-#            elif self.mode == modes['test']:
+            elif self.mode == modes['test']:
+                start_tokens = tf.ones([self.batch_size, ], tf.int32) # * special_tokens['<BOS>']
+                end_token = special_tokens['<EOS>']
+                decoding_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(embedding=embedding,
+                                                                    start_tokens=start_tokens, end_token=end_token)
+                inference_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=decoding_helper,
+                                                                        initial_state=decoder_initial_state,
+                                                                        output_layer=projection_layer)
+                decoder_outputs, _, final_seq_len = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
+                                                                maximum_iterations=MAX_SENTENCE_LENGTH)
+                # pad to same shape in order to calculate loss
+
+                self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
+                self.decoder_predict_eval = tf.argmax(self.decoder_logits_eval, axis=-1, name='decoder_pred_eval')
+
         #print(tf.global_variables())
         self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=3)
 
@@ -235,6 +248,18 @@ class Seq2Seq:
 
         return loss, calc_perplexity(loss)
 
+    def inference(self, sess, batch, txt):
+        feed_dict = {self.encoder_inputs: batch.encoder_inputs,
+                      self.encoder_inputs_length: batch.encoder_inputs_length,
+                      self.batch_size: len(batch.encoder_inputs)}
+        pred = sess.run([self.decoder_predict_eval], feed_dict=feed_dict)
+        pred = pred[0]
+        for i in range(len(pred)):
+            sent = util.decoder_inference(self.idx2word, batch.encoder_inputs[i], 
+                batch.encoder_inputs_length[i], pred[i])
+            txt.write(sent + "\n")
+
+
 def calc_perplexity(loss):
     return math.exp(float(loss)) if loss < 300 else float('inf')
 
@@ -263,7 +288,7 @@ def train():
     embeddings[3] = unk
     #print(embeddings)
 
-    np.save('embeddings.npy', embeddings)
+    # np.save('embeddings.npy', embeddings)
     train_graph = tf.Graph()
     eval_graph = tf.Graph()
 
@@ -343,8 +368,60 @@ def train():
                 pt += 1
                 print(color('sampling pt: ' + str( pt ) + '/' + str(total_samp), fg='white', bg='red'))
         print(color('sampling pt: ' + str( pt ) + '/' + str(total_samp), fg='white', bg='red'))
+
+
 def test():
-    print('hi')
+    datasetTest = DatasetTest()
+    print('start build dict...')
+    datasetTest.load_dict()
+    print('build dict done!')
+    test_data = datasetTest.load_test_line(FLAGS.test_dir, FLAGS.test_file)
+    datasetTest.prep(test_data)
+
+    # word2vec_model = datasetTest.model
+    embeddings = np.zeros([datasetTest.vocab_num, emb_size],dtype=np.float32)
+    # for word in word2vec_model.wv.vocab:
+    #     index = word2vec_model.wv.vocab[word].index
+    #     vec = word2vec_model.wv[word]
+    #     embeddings[index] = vec
+    #     if word in special_tokens_to_word:
+    #         print('special word: ', word, ', index: ', index)
+    # pad = np.random.normal(size=[emb_size])
+    # unk = np.random.normal(size=[emb_size])
+    # embeddings[0] = pad
+    # embeddings[3] = unk
+    #print(embeddings)
+
+    test_graph = tf.Graph()
+    gpu_config = tf.ConfigProto()
+    gpu_config.gpu_options.allow_growth = True
+    print('start building test graph...')
+    with test_graph.as_default():
+        model_test = Seq2Seq(voc=datasetTest.vocab_num, idx2word=datasetTest.idx2word,
+            mode=modes['test'], att=FLAGS.with_attention)
+        model_test.build_model(embeddings)
+        #model_eval.saver = tf.train.Saver(max_to_keep = 3)
+
+    test_sess = tf.Session(graph=test_graph, config=gpu_config)
+
+    ckpt = tf.train.get_checkpoint_state(FLAGS.save_dir)
+    if FLAGS.load_saver and ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
+        print('Reloading model parameters..')
+        model_test.saver.restore(test_sess, ckpt.model_checkpoint_path)
+    else:
+        print('ERROR: you should load model for testing!')
+        exit(0)
+    ckpts_path = FLAGS.save_dir + "chatbot.ckpt"
+    
+    num_steps = int( len(datasetTest.test_data) / FLAGS.batch_size )
+    txt = open(FLAGS.output_filename, 'w')
+    for i in range(num_steps):
+        batch = datasetTest.next_batch(FLAGS.batch_size)
+        model_test.inference(test_sess, batch, txt)
+        print(str(i) + '/' + str(num_steps) + ' steps...done')
+    print('\n\nTesting finished.')
+    print('\n Save file: ' + FLAGS.output_filename)
+    txt.close()
 
 def main(_):
   if FLAGS.test_mode == False:
@@ -369,10 +446,10 @@ if __name__ == '__main__':
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.001) 
     parser.add_argument('-mi', '--min_counts', type=int, default=100)
     parser.add_argument('-e', '--num_epochs', type=int, default=100)
-    parser.add_argument('-b', '--batch_size', type=int, default=100)
+    parser.add_argument('-b', '--batch_size', type=int, default=250)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
-    parser.add_argument('-d', '--num_display_steps', type=int, default=50)
-    parser.add_argument('-ns', '--num_saver_steps', type=int, default=80)
+    parser.add_argument('-d', '--num_display_steps', type=int, default=100)
+    parser.add_argument('-ns', '--num_saver_steps', type=int, default=150)
     parser.add_argument('-s', '--save_dir', type=str, default='save/')
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
     parser.add_argument('-o', '--output_filename', type=str, default='output.txt')
@@ -384,6 +461,10 @@ if __name__ == '__main__':
     parser.add_argument('--test_dir', type=str, 
         default=('/home/data/mlds_hw2_2_data')
     )
+    parser.add_argument('--test_file', type=str, 
+        default=('/test_input.txt')
+    )
+
 
     FLAGS, unparsed = parser.parse_known_args()
     

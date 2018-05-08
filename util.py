@@ -10,6 +10,22 @@ def inv_sigmoid(num_epo):
     print(y)
     return y
 
+def decoder_inference(idx2word, _in, _len_in, pred):
+
+    eos = len(pred) - 1
+    for i in range(len(pred)):
+        if pred[i] == special_tokens['<EOS>']:
+            eos = i
+            break
+    prev = [ idx2word[x] for x in _in[0:(_len_in)] ]
+    predict = [ idx2word[x] for x in pred[0:(eos)] ] 
+
+    #print(color('\nQuestions: ' + str(prev) + \
+    #        '\n Predict : ' + str(predict) + ' (len: ' + str(len(pred)) +', eos: ' + str(eos) + ')', fg='blue'))
+
+    sen = ' '.join([w for w in predict])
+    return sen
+
 def decoder_print(idx2word, _in, _len_in, _out, _len_out, pred, my_color):
 
     #_in = list(reversed(_in))
