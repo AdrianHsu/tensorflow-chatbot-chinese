@@ -40,7 +40,7 @@ eval_line_num  =    2478
 emb_size       =     300
 PKL_EXIST      =    True
 
-MAX_SENTENCE_LENGTH = 10 # longest
+MAX_SENTENCE_LENGTH = 15 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
 special_tokens_to_word = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
 
@@ -420,7 +420,7 @@ def test():
         model_test.inference(test_sess, batch, txt)
         print(str(i) + '/' + str(num_steps) + ' steps...done')
     print('\n\nTesting finished.')
-    print('\n Save file: ' + FLAGS.output_filename)
+    print('\nSave file: ' + FLAGS.output_filename)
     txt.close()
 
 def main(_):
