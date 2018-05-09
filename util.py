@@ -30,6 +30,8 @@ def decoder_inference(idx2word, _in, _len_in, pred):
            continue
         if word == sen[-1]:
            continue
+        if word == '<UNK>':
+           continue
         sen.append(word)
     sen = ' '.join([w for w in sen])
     return sen

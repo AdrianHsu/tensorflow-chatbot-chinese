@@ -180,16 +180,15 @@ class Seq2Seq:
                                                                         output_layer=projection_layer)
                 decoder_outputs, _, final_seq_len = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
                                                                 maximum_iterations=MAX_SENTENCE_LENGTH)
-                # pad to same shape in order to calculate loss
 
                 self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_predict_eval = tf.argmax(self.decoder_logits_eval, axis=-1, name='decoder_pred_eval')
 
-    def build_optimizer(self):
+    def build_optimizer(self, lr):
 
         #optimizer = tf.train.GradientDescentOptimizer(0.005)
         #print('use gradient descent optimizer...')
-        optimizer = tf.train.AdamOptimizer(0.001)#.minimize(self.train_loss)
+        optimizer = tf.train.AdamOptimizer(lr)#.minimize(self.train_loss)
         #self.train_op = optimizer
         trainable_params = tf.trainable_variables()
         gradients = tf.gradients(self.train_loss, trainable_params)
@@ -303,7 +302,7 @@ def train():
         model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
             mode=modes['train'], att=FLAGS.with_attention, lr=lr)
         model.build_model(embeddings)
-        model.build_optimizer()
+        model.build_optimizer(FLAGS.learning_rate)
         model.saver = tf.train.Saver(max_to_keep = 3)
         init = tf.global_variables_initializer()
     train_sess = tf.Session(graph=train_graph, config=gpu_config)
@@ -401,6 +400,7 @@ def test():
         model_test = Seq2Seq(voc=datasetTest.vocab_num, idx2word=datasetTest.idx2word,
             mode=modes['test'], att=FLAGS.with_attention)
         model_test.build_model(embeddings)
+        model_test.saver = tf.train.Saver(max_to_keep = 3)
 
     test_sess = tf.Session(graph=test_graph, config=gpu_config)
 
@@ -444,7 +444,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.001) 
-    parser.add_argument('-mi', '--min_counts', type=int, default=50)
+    parser.add_argument('-mi', '--min_counts', type=int, default=100) #50 -> 15000 words
     parser.add_argument('-e', '--num_epochs', type=int, default=50)
     parser.add_argument('-b', '--batch_size', type=int, default=250)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
