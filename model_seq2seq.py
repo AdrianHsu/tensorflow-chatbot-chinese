@@ -51,8 +51,8 @@ class Seq2Seq:
 
 
         self.num_layers     =     2
-        self.rnn_size       =   768
-        self.keep_prob      =   0.7
+        self.rnn_size       =   512
+        self.keep_prob      =   1.0
         self.vocab_num      =   voc
         self.with_attention =   att
         self.mode           =  mode
@@ -120,8 +120,8 @@ class Seq2Seq:
             else:
                 decoder_initial_state = encoder_state
             projection_layer = tf.layers.Dense(
-                    #self.vocab_num, kernel_initializer=tf.truncated_normal_initializer(mean=0.0, stddev=0.1))
-                    self.vocab_num, kernel_initializer=tf.contrib.layers.xavier_initializer())
+                    self.vocab_num, kernel_initializer=tf.truncated_normal_initializer(mean=0.0, stddev=0.1))
+                    #self.vocab_num, kernel_initializer=tf.contrib.layers.xavier_initializer())
 
             if self.mode == modes['train']:
                 ending = tf.strided_slice(self.decoder_targets, [0, 0], [self.batch_size, -1], [1, 1])
@@ -444,12 +444,12 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.001) 
-    parser.add_argument('-mi', '--min_counts', type=int, default=100) #50 -> 15000 words
-    parser.add_argument('-e', '--num_epochs', type=int, default=50)
-    parser.add_argument('-b', '--batch_size', type=int, default=250)
+    parser.add_argument('-mi', '--min_counts', type=int, default=10) #50 -> 15000 words
+    parser.add_argument('-e', '--num_epochs', type=int, default=100)
+    parser.add_argument('-b', '--batch_size', type=int, default=32)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
-    parser.add_argument('-d', '--num_display_steps', type=int, default=100)
-    parser.add_argument('-ns', '--num_saver_steps', type=int, default=150)
+    parser.add_argument('-d', '--num_display_steps', type=int, default=80)
+    parser.add_argument('-ns', '--num_saver_steps', type=int, default=100)
     parser.add_argument('-s', '--save_dir', type=str, default='save/')
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
     parser.add_argument('-o', '--output_filename', type=str, default='output.txt')
