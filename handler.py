@@ -45,7 +45,7 @@ class DatasetBase:
             else:
                 l.append(special_tokens['<UNK>'])
                 unk_num += 1
-        if not is_test and unk_num / float(len(sent)) > 0.15:
+        if not is_test and unk_num / float(len(sent)) > 0.0:#0.15:
             emp = []
             return emp
 
