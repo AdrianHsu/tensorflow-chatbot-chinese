@@ -4,9 +4,9 @@ from colors import *
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
 
 def inv_sigmoid(num_epo):
-    #x = np.arange(-1.0, 0.0, (1.0/num_epo))
-    #y = 1 / (1 + np.e**x)
-    y = np.ones(num_epo)
+    x = np.arange(-2.0, 0.0, (2.0/num_epo))
+    y = 1 / (1 + np.e**x)
+    #y = np.ones(num_epo)
     print(y)
     return y
 
@@ -23,7 +23,15 @@ def decoder_inference(idx2word, _in, _len_in, pred):
     #print(color('\nQuestions: ' + str(prev) + \
     #        '\n Predict : ' + str(predict) + ' (len: ' + str(len(pred)) +', eos: ' + str(eos) + ')', fg='blue'))
 
-    sen = ' '.join([w for w in predict])
+    sen = []
+    for word in predict:
+        if len(sen) == 0:
+           sen.append(word)
+           continue
+        if word == sen[-1]:
+           continue
+        sen.append(word)
+    sen = ' '.join([w for w in sen])
     return sen
 
 def decoder_print(idx2word, _in, _len_in, _out, _len_out, pred, my_color):

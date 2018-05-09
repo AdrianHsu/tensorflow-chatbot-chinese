@@ -38,7 +38,7 @@ train_line_num = 2840000
 eval_line_num  =    2478
 
 emb_size       =     300
-PKL_EXIST      =   False
+PKL_EXIST      =    True
 
 MAX_SENTENCE_LENGTH = 15 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -51,7 +51,7 @@ class Seq2Seq:
 
 
         self.num_layers     =     2
-        self.rnn_size       =  1024
+        self.rnn_size       =   768
         self.keep_prob      =   0.7
         self.vocab_num      =   voc
         self.with_attention =   att
@@ -80,9 +80,9 @@ class Seq2Seq:
         self.encoder_inputs_length = tf.placeholder(tf.int32, [None], name='encoder_inputs_length')
 
         with tf.device("/cpu:0"):
-            emb = tf.convert_to_tensor(emb, dtype=tf.float32)
+            embed = tf.constant_initialzier(emb, dtype=tf.float32)
             embedding = tf.get_variable(
-                initializer=emb, dtype=tf.float32, trainable=True, name='embedding')
+                initializer=embed, shape=emb.shape, dtype=tf.float32, trainable=True, name='embedding')
         #embedding = tf.get_variable('embedding', [self.vocab_num, self.embedding_size])
         self.hist_summary.append(tf.summary.histogram(embedding.name + '/embed', embedding))
 
@@ -120,7 +120,8 @@ class Seq2Seq:
             else:
                 decoder_initial_state = encoder_state
             projection_layer = tf.layers.Dense(
-                    self.vocab_num, kernel_initializer=tf.truncated_normal_initializer(mean=0.0, stddev=0.1))
+                    #self.vocab_num, kernel_initializer=tf.truncated_normal_initializer(mean=0.0, stddev=0.1))
+                    self.vocab_num, kernel_initializer=tf.contrib.layers.xavier_initializer())
 
             if self.mode == modes['train']:
                 ending = tf.strided_slice(self.decoder_targets, [0, 0], [self.batch_size, -1], [1, 1])
@@ -183,9 +184,6 @@ class Seq2Seq:
 
                 self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_predict_eval = tf.argmax(self.decoder_logits_eval, axis=-1, name='decoder_pred_eval')
-
-        #print(tf.global_variables())
-        self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=3)
 
     def build_optimizer(self):
 
@@ -306,7 +304,7 @@ def train():
             mode=modes['train'], att=FLAGS.with_attention, lr=lr)
         model.build_model(embeddings)
         model.build_optimizer()
-        #model.saver = tf.train.Saver(max_to_keep = 3)
+        model.saver = tf.train.Saver(max_to_keep = 3)
         init = tf.global_variables_initializer()
     train_sess = tf.Session(graph=train_graph, config=gpu_config)
 
@@ -315,7 +313,8 @@ def train():
         model_eval = Seq2Seq(voc=datasetEval.vocab_num, idx2word=datasetEval.idx2word,
             mode=modes['eval'], att=FLAGS.with_attention)
         model_eval.build_model(embeddings)
-        #model_eval.saver = tf.train.Saver(max_to_keep = 3)
+        model_eval.saver = tf.train.Saver(max_to_keep = 3)
+        #init_eval = tf.global_variables_initializer()
     eval_sess = tf.Session(graph=eval_graph, config=gpu_config)
 
 
@@ -323,9 +322,11 @@ def train():
     if FLAGS.load_saver and ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
         print('Reloading model parameters..')
         model.saver.restore(train_sess, ckpt.model_checkpoint_path)
+        #model_eval.saver.restore(eval_sess, ckpt.model_checkpoint_path)
     else:
         print('Created new model parameters..')
         train_sess.run(init)
+        #eval_sess.run(init_eval)
     ckpts_path = FLAGS.save_dir + "chatbot.ckpt"
 
     summary_writer = tf.summary.FileWriter(FLAGS.log_dir + '/train')
@@ -361,9 +362,9 @@ def train():
                  ", Perplexity: " + "{:.4f}".format(perp_eval) + ")", fg='white', bg='green'))
             pbar.set_description("Step " + str(i) + "/" + \
                     str(num_steps) + "(" + str(current_step) + ")" + \
-                    #", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.4f}".format(perp) + ", Sampling: "+ \
-                    ", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.4f}".format(perp) + ")")#", lr: "+ \
-                    #"{:.4f}".format(samp_prob[pt]) + ")" )
+                    ", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.1f}".format(perp) + ", Sampling: "+ \
+                    #", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.4f}".format(perp) + ")")#", lr: "+ \
+                    "{:.4f}".format(samp_prob[pt]) + ")" )
             if i % int(num_steps / 3) == 0 and i != 0:
                 pt += 1
                 print(color('sampling pt: ' + str( pt ) + '/' + str(total_samp), fg='white', bg='red'))
@@ -400,7 +401,6 @@ def test():
         model_test = Seq2Seq(voc=datasetTest.vocab_num, idx2word=datasetTest.idx2word,
             mode=modes['test'], att=FLAGS.with_attention)
         model_test.build_model(embeddings)
-        #model_eval.saver = tf.train.Saver(max_to_keep = 3)
 
     test_sess = tf.Session(graph=test_graph, config=gpu_config)
 
@@ -445,7 +445,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.001) 
     parser.add_argument('-mi', '--min_counts', type=int, default=50)
-    parser.add_argument('-e', '--num_epochs', type=int, default=100)
+    parser.add_argument('-e', '--num_epochs', type=int, default=50)
     parser.add_argument('-b', '--batch_size', type=int, default=250)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=100)

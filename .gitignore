@@ -1,7 +1,8 @@
+*.model
 *.pkl
 __pycache__
-save
-logs
+save*
+logs*
 data
 .DS_Store
 *.txt
