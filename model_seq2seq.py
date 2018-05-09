@@ -80,7 +80,7 @@ class Seq2Seq:
         self.encoder_inputs_length = tf.placeholder(tf.int32, [None], name='encoder_inputs_length')
 
         with tf.device("/cpu:0"):
-            embed = tf.constant_initialzier(emb, dtype=tf.float32)
+            embed = tf.constant_initializer(emb, dtype=tf.float32)
             embedding = tf.get_variable(
                 initializer=embed, shape=emb.shape, dtype=tf.float32, trainable=True, name='embedding')
         #embedding = tf.get_variable('embedding', [self.vocab_num, self.embedding_size])
