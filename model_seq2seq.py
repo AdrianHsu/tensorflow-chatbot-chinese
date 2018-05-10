@@ -408,6 +408,7 @@ def test():
     if FLAGS.load_saver and ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
         print('Reloading model parameters..')
         model_test.saver.restore(test_sess, ckpt.model_checkpoint_path)
+        print(ckpt.model_checkpoint_path)
     else:
         print('ERROR: you should load model for testing!')
         exit(0)
@@ -425,10 +426,10 @@ def test():
 
 def main(_):
   if FLAGS.test_mode == False:
-    print(color('remove directory: ' + FLAGS.log_dir, fg='red'))
-    if tf.gfile.Exists(FLAGS.log_dir):
-      tf.gfile.DeleteRecursively(FLAGS.log_dir)
-    tf.gfile.MakeDirs(FLAGS.log_dir)
+    #print(color('remove directory: ' + FLAGS.log_dir, fg='red'))
+    #if tf.gfile.Exists(FLAGS.log_dir):
+    #  tf.gfile.DeleteRecursively(FLAGS.log_dir)
+    #tf.gfile.MakeDirs(FLAGS.log_dir)
     print('train mode: start')
     train()
   else:
