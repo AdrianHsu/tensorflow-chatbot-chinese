@@ -32,10 +32,15 @@ tf.set_random_seed(0)
 #train_line_num = 45000
 #eval_line_num  =  5000
 
-filename = '/clr_conversation.txt'
-total_line_num = 2842478
-train_line_num = 2840000
-eval_line_num  =    2478
+#filename = '/clr_conversation.txt'
+#total_line_num = 2842478
+#train_line_num = 2840000
+#eval_line_num  =    2478
+
+filename = '/conversation.txt'
+total_line_num = 3599478
+train_line_num = 3587000
+eval_line_num  =   12478
 
 emb_size       =     300
 PKL_EXIST      =    True
@@ -92,8 +97,8 @@ class Seq2Seq:
         if self.mode != modes['test']:
             self.decoder_targets = tf.placeholder(tf.int32, [None, None], name='decoder_targets')
             self.decoder_targets_length = tf.placeholder(tf.int32, [None], name='decoder_targets_length')
-            self.max_target_sequence_length = tf.reduce_max(self.decoder_targets_length, name='max_target_len')
-            self.mask = tf.sequence_mask(self.decoder_targets_length, self.max_target_sequence_length, 
+            #self.max_target_sequence_length = tf.reduce_max(self.decoder_targets_length, name='max_target_len')
+            self.mask = tf.sequence_mask(self.decoder_targets_length, MAX_SENTENCE_LENGTH, 
                 dtype=tf.float32, name='masks')
 
         with tf.variable_scope('encoder'):
@@ -137,10 +142,13 @@ class Seq2Seq:
                                                                     name='training_helper')
                 training_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=training_helper,
                       initial_state=decoder_initial_state, output_layer=projection_layer)
-                decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=training_decoder,
+                decoder_outputs, _, final_seq_len = tf.contrib.seq2seq.dynamic_decode(decoder=training_decoder,
                                                                           impute_finished=True,
-                                                                maximum_iterations=self.max_target_sequence_length)
-                self.decoder_logits_train = tf.identity(decoder_outputs.rnn_output)
+                                                                maximum_iterations=MAX_SENTENCE_LENGTH)
+                pad_size = MAX_SENTENCE_LENGTH - tf.reduce_max(final_seq_len)
+                pad_rnn_output = tf.pad(decoder_outputs.rnn_output, [[0, 0], [0, pad_size], [0, 0]])
+                
+                self.decoder_logits_train = tf.identity(pad_rnn_output)
                 self.decoder_predict_train = tf.argmax(self.decoder_logits_train, axis=-1, name='decoder_pred_train')
 
                 self.train_loss = tf.contrib.seq2seq.sequence_loss(logits=self.decoder_logits_train,
@@ -156,17 +164,16 @@ class Seq2Seq:
                                                                         initial_state=decoder_initial_state,
                                                                         output_layer=projection_layer)
                 decoder_outputs, _, final_seq_len = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
-                                                                maximum_iterations=self.max_target_sequence_length)
+                                                                maximum_iterations=MAX_SENTENCE_LENGTH)
                 # pad to same shape in order to calculate loss
-                pad_decoder_targets = tf.identity(self.decoder_targets)
-                pad_size = self.max_target_sequence_length - tf.reduce_max(final_seq_len)
+                pad_size = MAX_SENTENCE_LENGTH - tf.reduce_max(final_seq_len)
                 pad_rnn_output = tf.pad(decoder_outputs.rnn_output, [[0, 0], [0, pad_size], [0, 0]])
                 
                #  self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_logits_eval = tf.identity(pad_rnn_output)
                 self.decoder_predict_eval = tf.argmax(self.decoder_logits_eval, axis=-1, name='decoder_pred_eval')
                 self.eval_loss = tf.contrib.seq2seq.sequence_loss(logits=pad_rnn_output,
-                                                             targets=pad_decoder_targets, weights=self.mask)
+                                                             targets=self.decoder_targets, weights=self.mask)
 
                 self.eval_summary = tf.summary.scalar('validation loss', self.eval_loss)
 
@@ -447,9 +454,9 @@ if __name__ == '__main__':
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.001) 
     parser.add_argument('-mi', '--min_counts', type=int, default=100) #50 -> 15000 words
     parser.add_argument('-e', '--num_epochs', type=int, default=50)
-    parser.add_argument('-b', '--batch_size', type=int, default=250)
+    parser.add_argument('-b', '--batch_size', type=int, default=500)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
-    parser.add_argument('-d', '--num_display_steps', type=int, default=80)
+    parser.add_argument('-d', '--num_display_steps', type=int, default=60)
     parser.add_argument('-ns', '--num_saver_steps', type=int, default=100)
     parser.add_argument('-s', '--save_dir', type=str, default='save/')
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
