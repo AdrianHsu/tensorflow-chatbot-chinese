@@ -56,8 +56,8 @@ class Seq2Seq:
 
 
         self.num_layers     =     2
-        self.rnn_size       =  1500
-        self.keep_prob      =   0.9
+        self.rnn_size       =  1800
+        self.keep_prob      =   1.0
         self.vocab_num      =   voc
         self.with_attention =   att
         self.mode           =  mode
@@ -453,7 +453,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.001) 
     parser.add_argument('-mi', '--min_counts', type=int, default=10) #50 -> 15000 words
-    parser.add_argument('-e', '--num_epochs', type=int, default=50)
+    parser.add_argument('-e', '--num_epochs', type=int, default=100)
     parser.add_argument('-b', '--batch_size', type=int, default=32)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=60)
