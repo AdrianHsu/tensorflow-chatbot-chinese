@@ -43,7 +43,7 @@ train_line_num = 3587000
 eval_line_num  =   12478
 
 emb_size       =     300
-PKL_EXIST      =   False
+PKL_EXIST      =    True
 
 MAX_SENTENCE_LENGTH = 15 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -56,8 +56,8 @@ class Seq2Seq:
 
 
         self.num_layers     =     2
-        self.rnn_size       =  2048
-        self.keep_prob      =   1.0
+        self.rnn_size       =  1500
+        self.keep_prob      =   0.9
         self.vocab_num      =   voc
         self.with_attention =   att
         self.mode           =  mode
