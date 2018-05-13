@@ -56,7 +56,7 @@ class Seq2Seq:
 
 
         self.num_layers     =     2
-        self.rnn_size       =  1800
+        self.rnn_size       =  1500
         self.keep_prob      =   1.0
         self.vocab_num      =   voc
         self.with_attention =   att
