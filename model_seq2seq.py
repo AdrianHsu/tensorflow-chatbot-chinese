@@ -125,8 +125,8 @@ class Seq2Seq:
             else:
                 decoder_initial_state = encoder_state
             projection_layer = tf.layers.Dense(
-                    #self.vocab_num, kernel_initializer=tf.truncated_normal_initializer(mean=0.0, stddev=0.1))
-                    self.vocab_num, kernel_initializer=tf.contrib.layers.xavier_initializer())
+                    self.vocab_num, kernel_initializer=tf.truncated_normal_initializer(mean=0.0, stddev=0.1))
+                    #self.vocab_num, kernel_initializer=tf.contrib.layers.xavier_initializer())
 
             if self.mode == modes['train']:
                 ending = tf.strided_slice(self.decoder_targets, [0, 0], [self.batch_size, -1], [1, 1])
