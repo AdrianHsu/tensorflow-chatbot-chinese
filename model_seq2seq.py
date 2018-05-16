@@ -32,10 +32,15 @@ tf.set_random_seed(0)
 #train_line_num = 45000
 #eval_line_num  =  5000
 
-filename = '/clr_conversation.txt'
-total_line_num = 2842478
-train_line_num = 2840000
-eval_line_num  =    2478
+#filename = '/clr_conversation.txt'
+#total_line_num = 2842478
+#train_line_num = 2840000
+#eval_line_num  =    2478
+
+filename = '/conversation.txt'
+total_line_num = 3599478
+train_line_num = 3587000
+eval_line_num  =   12478
 
 emb_size       =     300
 PKL_EXIST      =    True
@@ -51,7 +56,7 @@ class Seq2Seq:
 
 
         self.num_layers     =     2
-        self.rnn_size       =   512
+        self.rnn_size       =  1024
         self.keep_prob      =   1.0
         self.vocab_num      =   voc
         self.with_attention =   att
@@ -322,6 +327,7 @@ def train():
         print('Reloading model parameters..')
         model.saver.restore(train_sess, ckpt.model_checkpoint_path)
         #model_eval.saver.restore(eval_sess, ckpt.model_checkpoint_path)
+        print(ckpt.model_checkpoint_path)
     else:
         print('Created new model parameters..')
         train_sess.run(init)
@@ -426,9 +432,9 @@ def test():
 def main(_):
   if FLAGS.test_mode == False:
     print(color('remove directory: ' + FLAGS.log_dir, fg='red'))
-    if tf.gfile.Exists(FLAGS.log_dir):
-      tf.gfile.DeleteRecursively(FLAGS.log_dir)
-    tf.gfile.MakeDirs(FLAGS.log_dir)
+    #if tf.gfile.Exists(FLAGS.log_dir):
+    #  tf.gfile.DeleteRecursively(FLAGS.log_dir)
+    #tf.gfile.MakeDirs(FLAGS.log_dir)
     print('train mode: start')
     train()
   else:
@@ -444,11 +450,11 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.001) 
-    parser.add_argument('-mi', '--min_counts', type=int, default=10) #50 -> 15000 words
-    parser.add_argument('-e', '--num_epochs', type=int, default=12)
-    parser.add_argument('-b', '--batch_size', type=int, default=32)
+    parser.add_argument('-mi', '--min_counts', type=int, default=50) #50 -> 15000 words
+    parser.add_argument('-e', '--num_epochs', type=int, default=100)
+    parser.add_argument('-b', '--batch_size', type=int, default=500)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
-    parser.add_argument('-d', '--num_display_steps', type=int, default=80)
+    parser.add_argument('-d', '--num_display_steps', type=int, default=60)
     parser.add_argument('-ns', '--num_saver_steps', type=int, default=100)
     parser.add_argument('-s', '--save_dir', type=str, default='save/')
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
