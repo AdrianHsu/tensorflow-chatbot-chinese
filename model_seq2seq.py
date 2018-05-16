@@ -45,7 +45,7 @@ eval_line_num  =   12478
 emb_size       =     300
 PKL_EXIST      =    True
 
-MAX_SENTENCE_LENGTH = 15 # longest
+#MAX_SENTENCE_LENGTH = 15 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
 special_tokens_to_word = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
 
@@ -97,8 +97,8 @@ class Seq2Seq:
         if self.mode != modes['test']:
             self.decoder_targets = tf.placeholder(tf.int32, [None, None], name='decoder_targets')
             self.decoder_targets_length = tf.placeholder(tf.int32, [None], name='decoder_targets_length')
-            #self.max_target_sequence_length = tf.reduce_max(self.decoder_targets_length, name='max_target_len')
-            self.mask = tf.sequence_mask(self.decoder_targets_length, MAX_SENTENCE_LENGTH, 
+            self.max_target_sequence_length = tf.reduce_max(self.decoder_targets_length, name='max_target_len')
+            self.mask = tf.sequence_mask(self.decoder_targets_length, self.max_target_sequence_length, 
                 dtype=tf.float32, name='masks')
 
         with tf.variable_scope('encoder'):
@@ -144,11 +144,12 @@ class Seq2Seq:
                       initial_state=decoder_initial_state, output_layer=projection_layer)
                 decoder_outputs, _, final_seq_len = tf.contrib.seq2seq.dynamic_decode(decoder=training_decoder,
                                                                           impute_finished=True,
-                                                                maximum_iterations=MAX_SENTENCE_LENGTH)
-                pad_size = MAX_SENTENCE_LENGTH - tf.reduce_max(final_seq_len)
-                pad_rnn_output = tf.pad(decoder_outputs.rnn_output, [[0, 0], [0, pad_size], [0, 0]])
+                                                                maximum_iterations=self.max_target_sequence_length)
+                #pad_size = self.max_target_sequence_length - tf.reduce_max(final_seq_len)
+                #pad_rnn_output = tf.pad(decoder_outputs.rnn_output, [[0, 0], [0, pad_size], [0, 0]])
                 
-                self.decoder_logits_train = tf.identity(pad_rnn_output)
+                #self.decoder_logits_train = tf.identity(pad_rnn_output)
+                self.decoder_logits_train = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_predict_train = tf.argmax(self.decoder_logits_train, axis=-1, name='decoder_pred_train')
 
                 self.train_loss = tf.contrib.seq2seq.sequence_loss(logits=self.decoder_logits_train,
@@ -164,9 +165,9 @@ class Seq2Seq:
                                                                         initial_state=decoder_initial_state,
                                                                         output_layer=projection_layer)
                 decoder_outputs, _, final_seq_len = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
-                                                                maximum_iterations=MAX_SENTENCE_LENGTH)
+                                                                maximum_iterations=self.max_target_sequence_length)
                 # pad to same shape in order to calculate loss
-                pad_size = MAX_SENTENCE_LENGTH - tf.reduce_max(final_seq_len)
+                pad_size = self.max_target_sequence_length - tf.reduce_max(final_seq_len)
                 pad_rnn_output = tf.pad(decoder_outputs.rnn_output, [[0, 0], [0, pad_size], [0, 0]])
                 
                #  self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
@@ -457,8 +458,8 @@ if __name__ == '__main__':
     parser.add_argument('-e', '--num_epochs', type=int, default=100)
     parser.add_argument('-b', '--batch_size', type=int, default=500)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
-    parser.add_argument('-d', '--num_display_steps', type=int, default=60)
-    parser.add_argument('-ns', '--num_saver_steps', type=int, default=100)
+    parser.add_argument('-d', '--num_display_steps', type=int, default=50)
+    parser.add_argument('-ns', '--num_saver_steps', type=int, default=80)
     parser.add_argument('-s', '--save_dir', type=str, default='save/')
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
     parser.add_argument('-o', '--output_filename', type=str, default='output.txt')
