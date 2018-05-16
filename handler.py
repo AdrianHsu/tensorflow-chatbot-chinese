@@ -8,6 +8,8 @@ from gensim.models import Word2Vec
 np.random.seed(0)
 word2vec_filename = "word2vec.model"
 
+MAX_LEN = 15
+
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
 special_tokens_to_word = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
 
@@ -26,6 +28,13 @@ class Batch:
             print(self.decoder_targets[i])
             print(self.decoder_targets_length[i])
             print("-----")
+
+class DataObject:
+    def __init__(self, _in, _out, _len_in, _len_out):
+        self._in = _in
+        self._out = _out
+        self._len_in = _len_in
+        self._len_out = _len_out
 
 class DatasetBase:
     def __init__(self):
@@ -60,7 +69,7 @@ class DatasetBase:
                 continue
 
             sent = text_to_word_sequence(data[i], lower=True, split=' ')
-            if len(sent) > 15 or len(sent) < 2: # too long
+            if len(sent) > (MAX_LEN - 1) or len(sent) < 2: # too long
                 init = True
                 continue
             idx_list = self.sentence_to_idx(sent)
@@ -75,11 +84,11 @@ class DatasetBase:
                 _out = idx_list
                 #_rev_in = list(reversed(_in))
                 # (the first EOS is part of the loss)
-                self.data.append([_in , _out + [special_tokens['<EOS>']]])
+                # shallow copy
+                self.data.append(self.build_pair(list(_in), list(_out)))
                 _in = idx_list
             if i % 100000 == 0:
                 print("building data list: " + str(i) + "/" + str(len(data)) + " done.")
-
 
         print('original line num:', len(data))
         print('prep data num: ', len(self.data))
@@ -87,6 +96,22 @@ class DatasetBase:
         self.perm = np.arange( len(self.data), dtype=np.int )
         self.shuffle_perm()
 
+    def build_pair(self, _in, _out):
+
+        _out += [special_tokens['<EOS>']]
+        _len_in = len(_in)
+        _len_out = len(_out)
+        assert _len_out <= MAX_LEN
+
+        pad = [special_tokens['<PAD>']] * (MAX_LEN - _len_in)
+        _in += pad
+        pad = [special_tokens['<PAD>']] * (MAX_LEN - _len_out)
+        _out += pad
+
+        assert len(_in) == len(_out)
+        d = DataObject(_in, _out, _len_in, _len_out)
+        return d
+    
     def shuffle_perm(self):
         np.random.shuffle(self.perm)
 
@@ -114,20 +139,13 @@ class DatasetBase:
 
     def create_batch(self, samples, batch_size):
         batch = Batch(batch_size)
-        batch.encoder_inputs_length = [len(sample[0]) for sample in samples]
-        batch.decoder_targets_length = [len(sample[1]) for sample in samples]
-        max_source_length = max(batch.encoder_inputs_length)
-        max_target_length = max(batch.decoder_targets_length)
-        for sample in samples:
-            source = sample[0]
-            pad = [special_tokens['<PAD>']] * (max_source_length - len(source))
-            #batch.encoder_inputs.append(pad + source)
-            batch.encoder_inputs.append(source + pad)
+        batch.encoder_inputs_length = [sample._len_in for sample in samples]
+        batch.decoder_targets_length = [sample._len_out for sample in samples]
 
-            target = sample[1]
-            pad = [special_tokens['<PAD>']] * (max_target_length - len(target))
-            batch.decoder_targets.append(target + pad)
-        
+        for sample in samples:
+            batch.encoder_inputs.append(sample._in)
+            batch.decoder_targets.append(sample._out)
+       
         return batch
 
     def load_dict(self): # for datasetEval

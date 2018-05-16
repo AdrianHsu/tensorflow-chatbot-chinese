@@ -97,8 +97,8 @@ class Seq2Seq:
         if self.mode != modes['test']:
             self.decoder_targets = tf.placeholder(tf.int32, [None, None], name='decoder_targets')
             self.decoder_targets_length = tf.placeholder(tf.int32, [None], name='decoder_targets_length')
-            self.max_target_sequence_length = tf.reduce_max(self.decoder_targets_length, name='max_target_len')
-            self.mask = tf.sequence_mask(self.decoder_targets_length, self.max_target_sequence_length, 
+            #self.max_target_sequence_length = tf.reduce_max(self.decoder_targets_length, name='max_target_len')
+            self.mask = tf.sequence_mask(self.decoder_targets_length, MAX_SENTENCE_LENGTH, 
                 dtype=tf.float32, name='masks')
 
         with tf.variable_scope('encoder'):
@@ -142,10 +142,13 @@ class Seq2Seq:
                                                                     name='training_helper')
                 training_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=training_helper,
                       initial_state=decoder_initial_state, output_layer=projection_layer)
-                decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=training_decoder,
+                decoder_outputs, _, final_seq_len = tf.contrib.seq2seq.dynamic_decode(decoder=training_decoder,
                                                                           impute_finished=True,
-                                                                maximum_iterations=self.max_target_sequence_length)
-                self.decoder_logits_train = tf.identity(decoder_outputs.rnn_output)
+                                                                maximum_iterations=MAX_SENTENCE_LENGTH)
+                pad_size = MAX_SENTENCE_LENGTH - tf.reduce_max(final_seq_len)
+                pad_rnn_output = tf.pad(decoder_outputs.rnn_output, [[0, 0], [0, pad_size], [0, 0]])
+                
+                self.decoder_logits_train = tf.identity(pad_rnn_output)
                 self.decoder_predict_train = tf.argmax(self.decoder_logits_train, axis=-1, name='decoder_pred_train')
 
                 self.train_loss = tf.contrib.seq2seq.sequence_loss(logits=self.decoder_logits_train,
@@ -161,17 +164,16 @@ class Seq2Seq:
                                                                         initial_state=decoder_initial_state,
                                                                         output_layer=projection_layer)
                 decoder_outputs, _, final_seq_len = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
-                                                                maximum_iterations=self.max_target_sequence_length)
+                                                                maximum_iterations=MAX_SENTENCE_LENGTH)
                 # pad to same shape in order to calculate loss
-                pad_decoder_targets = tf.identity(self.decoder_targets)
-                pad_size = self.max_target_sequence_length - tf.reduce_max(final_seq_len)
+                pad_size = MAX_SENTENCE_LENGTH - tf.reduce_max(final_seq_len)
                 pad_rnn_output = tf.pad(decoder_outputs.rnn_output, [[0, 0], [0, pad_size], [0, 0]])
                 
                #  self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_logits_eval = tf.identity(pad_rnn_output)
                 self.decoder_predict_eval = tf.argmax(self.decoder_logits_eval, axis=-1, name='decoder_pred_eval')
                 self.eval_loss = tf.contrib.seq2seq.sequence_loss(logits=pad_rnn_output,
-                                                             targets=pad_decoder_targets, weights=self.mask)
+                                                             targets=self.decoder_targets, weights=self.mask)
 
                 self.eval_summary = tf.summary.scalar('validation loss', self.eval_loss)
 
@@ -414,6 +416,7 @@ def test():
     if FLAGS.load_saver and ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
         print('Reloading model parameters..')
         model_test.saver.restore(test_sess, ckpt.model_checkpoint_path)
+        print(ckpt.model_checkpoint_path)
     else:
         print('ERROR: you should load model for testing!')
         exit(0)
@@ -431,7 +434,7 @@ def test():
 
 def main(_):
   if FLAGS.test_mode == False:
-    print(color('remove directory: ' + FLAGS.log_dir, fg='red'))
+    #print(color('remove directory: ' + FLAGS.log_dir, fg='red'))
     #if tf.gfile.Exists(FLAGS.log_dir):
     #  tf.gfile.DeleteRecursively(FLAGS.log_dir)
     #tf.gfile.MakeDirs(FLAGS.log_dir)
@@ -471,7 +474,7 @@ if __name__ == '__main__':
         default=('/test_input.txt')
     )
 
-
+ 
     FLAGS, unparsed = parser.parse_known_args()
     
     tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
