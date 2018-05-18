@@ -56,7 +56,7 @@ class Seq2Seq:
 
 
         self.num_layers     =     2
-        self.rnn_size       =  1024
+        self.rnn_size       =   512
         self.keep_prob      =   1.0
         self.vocab_num      =   voc
         self.with_attention =   att
@@ -194,10 +194,9 @@ class Seq2Seq:
 
     def build_optimizer(self, lr):
 
-        #optimizer = tf.train.GradientDescentOptimizer(0.005)
-        #print('use gradient descent optimizer...')
-        optimizer = tf.train.AdamOptimizer(lr)#.minimize(self.train_loss)
-        #self.train_op = optimizer
+        optimizer = tf.train.GradientDescentOptimizer(lr)
+        #optimizer = tf.train.AdamOptimizer(lr)#.minimize(self.train_loss)
+        #optimizer = tf.train.AdamOptimizer(lr, epsilon=0.1)#.minimize(self.train_loss)
         trainable_params = tf.trainable_variables()
         gradients = tf.gradients(self.train_loss, trainable_params)
         gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
@@ -305,7 +304,7 @@ def train():
         global_step = tf.Variable(0, trainable=False)
         lr = tf.train.exponential_decay(FLAGS.learning_rate,
                     global_step=global_step,
-                    decay_steps=1250, decay_rate=0.95, staircase=True)
+                    decay_steps=900, decay_rate=0.95, staircase=True)
         add_global = global_step.assign_add(1)
         model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
             mode=modes['train'], att=FLAGS.with_attention, lr=lr)
@@ -370,9 +369,11 @@ def train():
                  ", Perplexity: " + "{:.4f}".format(perp_eval) + ")", fg='white', bg='green'))
             pbar.set_description("Step " + str(i) + "/" + \
                     str(num_steps) + "(" + str(current_step) + ")" + \
+                    #", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.1f}".format(perp) + ", Sampling: "+ \
+                    #"{:.4f}".format(samp_prob[pt]) + ")" )
                     ", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.1f}".format(perp) + ", Sampling: "+ \
-                    #", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.4f}".format(perp) + ")")#", lr: "+ \
-                    "{:.4f}".format(samp_prob[pt]) + ")" )
+                            "{:.1f}".format(samp_prob[pt]) + ", lr: "+ "{:.8f}".format(print_lr) + ")" )
+
             if i % int(num_steps / 3) == 0 and i != 0:
                 pt += 1
                 print(color('sampling pt: ' + str( pt ) + '/' + str(total_samp), fg='white', bg='red'))
@@ -453,10 +454,10 @@ def main(_):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-lr', '--learning_rate', type=float, default=0.001) 
+    parser.add_argument('-lr', '--learning_rate', type=float, default=0.5) 
     parser.add_argument('-mi', '--min_counts', type=int, default=50) #50 -> 15000 words
     parser.add_argument('-e', '--num_epochs', type=int, default=100)
-    parser.add_argument('-b', '--batch_size', type=int, default=500)
+    parser.add_argument('-b', '--batch_size', type=int, default=750)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=50)
     parser.add_argument('-ns', '--num_saver_steps', type=int, default=80)
