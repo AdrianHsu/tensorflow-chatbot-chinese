@@ -56,7 +56,7 @@ class Seq2Seq:
 
 
         self.num_layers     =     2
-        self.rnn_size       =   512
+        self.rnn_size       =  2048
         self.keep_prob      =   1.0
         self.vocab_num      =   voc
         self.with_attention =   att
@@ -304,7 +304,7 @@ def train():
         global_step = tf.Variable(0, trainable=False)
         lr = tf.train.exponential_decay(FLAGS.learning_rate,
                     global_step=global_step,
-                    decay_steps=900, decay_rate=0.95, staircase=True)
+                    decay_steps=7200, decay_rate=0.95, staircase=True)
         add_global = global_step.assign_add(1)
         model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
             mode=modes['train'], att=FLAGS.with_attention, lr=lr)
@@ -455,12 +455,12 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.5) 
-    parser.add_argument('-mi', '--min_counts', type=int, default=50) #50 -> 15000 words
+    parser.add_argument('-mi', '--min_counts', type=int, default=100) #50 -> 15000 words
     parser.add_argument('-e', '--num_epochs', type=int, default=100)
-    parser.add_argument('-b', '--batch_size', type=int, default=750)
+    parser.add_argument('-b', '--batch_size', type=int, default=250)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
-    parser.add_argument('-d', '--num_display_steps', type=int, default=50)
-    parser.add_argument('-ns', '--num_saver_steps', type=int, default=80)
+    parser.add_argument('-d', '--num_display_steps', type=int, default=120)
+    parser.add_argument('-ns', '--num_saver_steps', type=int, default=200)
     parser.add_argument('-s', '--save_dir', type=str, default='save/')
     parser.add_argument('-l', '--log_dir', type=str, default='logs/')
     parser.add_argument('-o', '--output_filename', type=str, default='output.txt')
