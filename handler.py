@@ -156,10 +156,10 @@ class DatasetTrain(DatasetBase):
         file = open(file_path, 'r')
 
         raw_line = []
-        raw_line.append(['<PAD>'] * 2999999) #299999
+        raw_line.append(['<PAD>'] * 3999999) #299999
         raw_line.append(['<BOS>'] * 100)
         raw_line.append(['<EOS>'] * 50)
-        raw_line.append(['<UNK>'] *  999999) #39999
+        raw_line.append(['<UNK>'] * 2999999) #39999
 
 
         train_data = []

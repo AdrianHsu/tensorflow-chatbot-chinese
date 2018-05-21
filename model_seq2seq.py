@@ -43,7 +43,7 @@ train_line_num = 3587000
 eval_line_num  =   12478
 
 emb_size       =     300
-PKL_EXIST      =    True
+PKL_EXIST      =   False
 
 #MAX_SENTENCE_LENGTH = 15 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -304,7 +304,7 @@ def train():
         global_step = tf.Variable(0, trainable=False)
         lr = tf.train.exponential_decay(FLAGS.learning_rate,
                     global_step=global_step,
-                    decay_steps=7200, decay_rate=0.95, staircase=True)
+                    decay_steps=3250, decay_rate=0.95, staircase=True)
         add_global = global_step.assign_add(1)
         model = Seq2Seq(voc=datasetTrain.vocab_num, idx2word=datasetTrain.idx2word,
             mode=modes['train'], att=FLAGS.with_attention, lr=lr)
