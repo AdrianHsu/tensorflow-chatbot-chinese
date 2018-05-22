@@ -452,7 +452,7 @@ def main(_):
     test()
 
 if __name__ == '__main__':
-
+ 
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.5) 
     parser.add_argument('-mi', '--min_counts', type=int, default=100) #50 -> 15000 words
