@@ -45,7 +45,7 @@ eval_line_num  =   12478
 emb_size       =     300
 PKL_EXIST      =    True
 
-#MAX_SENTENCE_LENGTH = 15 # longest
+MAX_SENTENCE_LENGTH = 15 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
 special_tokens_to_word = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
 
@@ -367,12 +367,10 @@ def train():
                 print(color("Epoch " + str(epo) + ", step " + str(i) + "/" + str(num_steps) + \
                  ", (Evaluation Loss: " + "{:.4f}".format(loss_eval) + \
                  ", Perplexity: " + "{:.4f}".format(perp_eval) + ")", fg='white', bg='green'))
-            pbar.set_description("S " + str(i) + "/" + \
+            pbar.set_description("Step " + str(i) + "/" + \
                     str(num_steps) + "(" + str(current_step) + ")" + \
-                    #", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.1f}".format(perp) + ", Sampling: "+ \
-                    #"{:.4f}".format(samp_prob[pt]) + ")" )
-                    ", (Loss: " + "{:.4f}".format(loss) + ", P: " + "{:.1f}".format(perp) + ", Samp: "+ \
-                            "{:.4f}".format(samp_prob[pt]) + ", lr: "+ "{:.4}".format(print_lr) + ")" )
+                    ", (Loss: " + "{:.4f}".format(loss) + ", Perplexity: " + "{:.1f}".format(perp) + ", Sampling: "+ \
+                            "{:.2f}".format(samp_prob[pt]) + ", lr: "+ "{:.4}".format(print_lr) + ")" )
 
             if i % int(num_steps / 3) == 0 and i != 0:
                 pt += 1
@@ -456,7 +454,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.5) 
     parser.add_argument('-mi', '--min_counts', type=int, default=100) #50 -> 15000 words
-    parser.add_argument('-e', '--num_epochs', type=int, default=25)
+    parser.add_argument('-e', '--num_epochs', type=int, default=50)
     parser.add_argument('-b', '--batch_size', type=int, default=250)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=120)

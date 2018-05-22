@@ -18,4 +18,4 @@ export CUDA_VISIBLE_DEVICES=""
 
 python3 model_seq2seq.py --load_saver=1 --data_dir=$TEST_DIR \
             --test_mode=1 --output_filename=$OUTPUT_FILENAME \
-            --batch_size=100 --save_dir=save/
+            --batch_size=250 --save_dir=save/
