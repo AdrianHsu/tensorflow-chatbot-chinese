@@ -456,7 +456,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.5) 
     parser.add_argument('-mi', '--min_counts', type=int, default=100) #50 -> 15000 words
-    parser.add_argument('-e', '--num_epochs', type=int, default=100)
+    parser.add_argument('-e', '--num_epochs', type=int, default=25)
     parser.add_argument('-b', '--batch_size', type=int, default=250)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
     parser.add_argument('-d', '--num_display_steps', type=int, default=120)
