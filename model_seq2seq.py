@@ -370,7 +370,7 @@ def train():
             pbar.set_description("Step " + str(i) + "/" + \
                     str(num_steps) + "(" + str(current_step) + ")" + \
                     ", (Loss: " + "{:.4f}".format(loss) + ", Perplexity: " + "{:.1f}".format(perp) + ", Sampling: "+ \
-                            "{:.2f}".format(samp_prob[pt]) + ", lr: "+ "{:.4}".format(print_lr) + ")" )
+                            "{:.2f}".format(samp_prob[pt]) + ", lr: "+ "{:.6f}".format(print_lr) + ")" )
 
             if i % int(num_steps / 3) == 0 and i != 0:
                 pt += 1
