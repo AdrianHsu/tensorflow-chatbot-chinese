@@ -43,7 +43,7 @@ train_line_num = 3587000
 eval_line_num  =   12478
 
 emb_size       =     300
-PKL_EXIST      =   False
+PKL_EXIST      =    True
 
 #MAX_SENTENCE_LENGTH = 15 # longest
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
@@ -367,12 +367,12 @@ def train():
                 print(color("Epoch " + str(epo) + ", step " + str(i) + "/" + str(num_steps) + \
                  ", (Evaluation Loss: " + "{:.4f}".format(loss_eval) + \
                  ", Perplexity: " + "{:.4f}".format(perp_eval) + ")", fg='white', bg='green'))
-            pbar.set_description("Step " + str(i) + "/" + \
+            pbar.set_description("S " + str(i) + "/" + \
                     str(num_steps) + "(" + str(current_step) + ")" + \
                     #", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.1f}".format(perp) + ", Sampling: "+ \
                     #"{:.4f}".format(samp_prob[pt]) + ")" )
-                    ", (Loss: " + "{:.4f}".format(loss) + ", Perplex: " + "{:.1f}".format(perp) + ", Sampling: "+ \
-                            "{:.1f}".format(samp_prob[pt]) + ", lr: "+ "{:.8f}".format(print_lr) + ")" )
+                    ", (Loss: " + "{:.4f}".format(loss) + ", P: " + "{:.1f}".format(perp) + ", Samp: "+ \
+                            "{:.4f}".format(samp_prob[pt]) + ", lr: "+ "{:.4}".format(print_lr) + ")" )
 
             if i % int(num_steps / 3) == 0 and i != 0:
                 pt += 1
