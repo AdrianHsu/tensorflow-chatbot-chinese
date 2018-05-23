@@ -43,7 +43,7 @@ lr = tf.train.exponential_decay(...
 
 ## Model Structure
 
-![](/Users/adrianhsu/Desktop/tensorflow-chatbot-chinese/model.png)
+![](./img/model.png)
 
 - Attention Method: Bahdanau Attention
 - RNN Cell : GRU
