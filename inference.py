@@ -32,17 +32,32 @@ if __name__ == '__main__':
     x3 = graph.get_tensor_by_name('prefix/batch_size:0')
     y = graph.get_tensor_by_name('prefix/decoder/decoder_pred_eval:0')
 
+    test_input = ['只' ,'需' ,'小小的', '推動', ',', '人', '就', '飄向', '那裏' ,'了']
+
+    word2idx = {}
+    with open('word2idx.pkl', 'rb') as handle:
+        word2idx = pickle.load(handle)
+    print(test_input)
+    #print(word2idx['只'])
+    input_id = []
+    for x in test_input:
+        if x in word2idx:
+            input_id.append(word2idx[x])
+        else:
+            input_id.append(3) # <UNK>
+
+    print(input_id)
     with tf.Session(graph=graph) as sess:
         y_out = sess.run(y, feed_dict={
-            x1: [[20, 23, 22, 500, 31, 3000]],
-            x2: [5],
+            x1: [input_id],
+            x2: [len(input_id)],
             x3: 1
         })
 
         idx2word = {}
         with open('idx2word.pkl', 'rb') as handle:
-            pickle.dump(idx2word, handle)
-        print(idx2word)
-        predict = [ idx2word[x] for x in y_out ]
+            idx2word = pickle.load(handle)
+        print(y_out)
+        predict = [ idx2word[x] for x in y_out[0] ]
         print(predict)
     print ("finish")
