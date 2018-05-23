@@ -151,7 +151,7 @@ class Seq2Seq:
                 #self.decoder_logits_train = tf.identity(pad_rnn_output)
                 self.decoder_logits_train = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_predict_train = tf.argmax(self.decoder_logits_train, axis=-1, name='decoder_pred_train')
-
+                print(self.decoder_predict_train)
                 self.train_loss = tf.contrib.seq2seq.sequence_loss(logits=self.decoder_logits_train,
                                                              targets=self.decoder_targets, weights=self.mask)
                 self.train_summary = tf.summary.scalar('training loss', self.train_loss)
@@ -173,6 +173,7 @@ class Seq2Seq:
                #  self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_logits_eval = tf.identity(pad_rnn_output)
                 self.decoder_predict_eval = tf.argmax(self.decoder_logits_eval, axis=-1, name='decoder_pred_eval')
+                print(self.decoder_predict_eval)
                 self.eval_loss = tf.contrib.seq2seq.sequence_loss(logits=pad_rnn_output,
                                                              targets=self.decoder_targets, weights=self.mask)
 
@@ -191,6 +192,7 @@ class Seq2Seq:
 
                 self.decoder_logits_eval = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_predict_eval = tf.argmax(self.decoder_logits_eval, axis=-1, name='decoder_pred_eval')
+                print(self.decoder_predict_eval)
 
     def build_optimizer(self, lr):
 
@@ -311,6 +313,8 @@ def train():
         model.build_model(embeddings)
         model.build_optimizer(FLAGS.learning_rate)
         model.saver = tf.train.Saver(max_to_keep = 3)
+
+
         init = tf.global_variables_initializer()
     train_sess = tf.Session(graph=train_graph, config=gpu_config)
 
@@ -357,6 +361,8 @@ def train():
             loss, perp, current_step, print_lr = model.train(train_sess, batch, print_pred, 
                     summary_writer, add_global, samp_prob[pt])
             if current_step % FLAGS.num_saver_steps == 0 and current_step != 0:
+                
+                
                 ckpt_path = model.saver.save(train_sess, ckpts_path, global_step=current_step)
                 print(color("\nSaver saved: " + ckpt_path, fg='white', bg='green', style='bold'))
                 model_eval.saver.restore(eval_sess, ckpt_path)
@@ -367,10 +373,10 @@ def train():
                 print(color("Epoch " + str(epo) + ", step " + str(i) + "/" + str(num_steps) + \
                  ", (Evaluation Loss: " + "{:.4f}".format(loss_eval) + \
                  ", Perplexity: " + "{:.4f}".format(perp_eval) + ")", fg='white', bg='green'))
-            pbar.set_description("Step " + str(i) + "/" + \
+            pbar.set_description("S " + str(i) + "/" + \
                     str(num_steps) + "(" + str(current_step) + ")" + \
-                    ", (Loss: " + "{:.4f}".format(loss) + ", Perplexity: " + "{:.1f}".format(perp) + ", Sampling: "+ \
-                            "{:.2f}".format(samp_prob[pt]) + ", lr: "+ "{:.6f}".format(print_lr) + ")" )
+                    ", (L: " + "{:.4f}".format(loss) + ", P: " + "{:.1f}".format(perp) + ", Samp: "+ \
+                            "{:.4f}".format(samp_prob[pt]) + ", lr: "+ "{:.6f}".format(print_lr) + ")" )
 
             if i % int(num_steps / 3) == 0 and i != 0:
                 pt += 1
@@ -409,6 +415,7 @@ def test():
             mode=modes['test'], att=FLAGS.with_attention)
         model_test.build_model(embeddings)
         model_test.saver = tf.train.Saver(max_to_keep = 3)
+        
 
     test_sess = tf.Session(graph=test_graph, config=gpu_config)
 
@@ -421,7 +428,8 @@ def test():
         print('ERROR: you should load model for testing!')
         exit(0)
     ckpts_path = FLAGS.save_dir + "chatbot.ckpt"
-    
+    tf.train.write_graph(test_sess.graph_def, "./load", "test.pb", False) #proto
+    #exit(0)
     num_steps = int( len(datasetTest.test_data) / FLAGS.batch_size )
     txt = open(FLAGS.output_filename, 'w')
     for i in range(num_steps):
