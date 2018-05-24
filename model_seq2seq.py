@@ -428,6 +428,9 @@ def test():
         print('ERROR: you should load model for testing!')
         exit(0)
     ckpts_path = FLAGS.save_dir + "chatbot.ckpt"
+
+    # You have to run this write_graph to get your testing model!
+    # (since that train/test model structure are different)
     tf.train.write_graph(test_sess.graph_def, "./load", "test.pb", False) #proto
     #exit(0)
     num_steps = int( len(datasetTest.test_data) / FLAGS.batch_size )
@@ -461,7 +464,7 @@ if __name__ == '__main__':
  
     parser = argparse.ArgumentParser()
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.5) 
-    parser.add_argument('-mi', '--min_counts', type=int, default=100) #50 -> 15000 words
+    parser.add_argument('-mi', '--min_counts', type=int, default=50) #50 -> 15000 words
     parser.add_argument('-e', '--num_epochs', type=int, default=50)
     parser.add_argument('-b', '--batch_size', type=int, default=250)
     parser.add_argument('-t', '--test_mode', type=int, default=0)
