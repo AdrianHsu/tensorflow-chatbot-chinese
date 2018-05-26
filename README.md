@@ -237,6 +237,26 @@ Answers : ['上星期', '我', '在', '教堂', '問', '上帝', '。', '<EOS>']
 Predict : ['我', '也', '愛', '你', '。', '<EOS>']
 ```
 
+### Irrelevant but reasonable descriptions
+
+```
+Questions: ['別', '激動', '別', '激動', '。']
+Answers : ['把', '武器', '放下', '。', '<EOS>']
+Predict : ['我們', '沒事', '吧', '。', '<EOS>']
+ 
+Questions: ['最糟', '的', '就是', '讓', '他', '知道', '。']
+Answers : ['我們', '害怕', '。', '<EOS>']
+Predict : ['他', '是', '我', '的', '兒子', '的', '。', '<EOS>']
+
+Questions: ['起來', '你', '沒事', '吧', '。']
+Answers : ['不好意思', '姐姐', '剛才', '真的', '沒', '看到', '你', '。', '<EOS>'] 
+Predict : ['沒事', '。', '<EOS>']
+
+Questions: ['我愛你', '。']
+Answers : ['上星期', '我', '在', '教堂', '問', '上帝', '。', '<EOS>'] 
+Predict : ['我', '也', '愛', '你', '。', '<EOS>']
+```
+
 
 
 ## Training / Evaluation Loss
