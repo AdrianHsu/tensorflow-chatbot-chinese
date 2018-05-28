@@ -197,7 +197,7 @@ self.model = Word2Vec(raw_line, size=emb_size,
 
 It takes about **30 hours** (with one 1080Ti ) to make the training loss decrease from **5.8** to **2.5**, (the generated sentence looks quite okay after training loss <= 2.5).
 
-
+![](img/result.png)
 
 ### Correct description
 
@@ -260,6 +260,8 @@ Predict : ['我', '也', '愛', '你', '。', '<EOS>']
 
 
 ## Training / Evaluation Loss
+
+It takes about **30 hours** (with one 1080Ti ) to make the training loss decrease from **5.8** to **2.5**, (the generated sentence looks quite okay after training loss <= 2.5).
 
 ![](img/loss.png)
 
