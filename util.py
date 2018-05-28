@@ -4,9 +4,9 @@ from colors import *
 special_tokens = {'<PAD>': 0, '<BOS>': 1, '<EOS>': 2, '<UNK>': 3}
 
 def inv_sigmoid(num_epo):
-    x = np.arange(-2.0, 0.0, (2.0/num_epo))
-    y = 1 / (1 + np.e**x)
-    #y = np.ones(num_epo)
+    #x = np.arange(-3.0, 0.0, (3.0/num_epo))
+    #y = 1 / (1 + np.e**x)
+    y = np.ones(num_epo)
     print(y)
     return y
 
