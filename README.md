@@ -11,6 +11,45 @@ This repo is based on [this article](https://blog.csdn.net/liuchonge/article/det
 
 
 
+
+
+## How-to
+
+#### [option 1] re-train the model
+
+```shell
+$ git clone https://github.com/AdrianHsu/tensorflow-chatbot-chinese.git
+# put your own training/eval data in the correct path, as shown above
+$ ./run.sh
+```
+
+#### [option 2] testing the model with pretrained saver file
+
+1. You should download the pretrained model [here](/) and then put it into `save/`directory.
+2. make sure your input is already put in the correct path, and also it is pre-processed by **text segmentation** APIs, for example, *jieba*.
+
+```
+$ ./hw2_seq2seq.sh
+```
+
+
+
+## How-to (web)
+
+You have to download the frozen model first.
+
+```
+$ ./download_model.sh
+```
+
+And then just directly run the server file.
+
+```
+$ python3 server.py
+```
+
+You'll need `aiohttp`, `socketio` to run this. The result will be shown on `https://localhost:8080`.
+
 ## Hyperparameters
 
 ```Python
@@ -98,27 +137,6 @@ eval_line_num  =   12478
 
 emb_size       =     300 # embedding size
 PKL_EXIST      =    True # if you want to re-train the GenSim model, you should set it False
-```
-
-
-
-## How-to
-
-#### [option 1] re-train the model
-
-```Shell
-$ git clone https://github.com/AdrianHsu/tensorflow-chatbot-chinese.git
-# put your own training/eval data in the correct path, as shown above
-$ ./run.sh
-```
-
-####[option 2] testing the model with pretrained saver file 
-
-1. You should download the pretrained model [here](/) and then put it into `save/`directory.
-2. make sure your input is already put in the correct path, and also it is pre-processed by **text segmentation** APIs, for example, *jieba*.
-
-```
-$ ./hw2_seq2seq.sh
 ```
 
 
