@@ -29,6 +29,7 @@ def connect(sid, environ):
 
 @sio.on('message')
 async def message(sid, data):
+    data = data.split("\n")[0];
     print(data, ", sid: ", sid)
     test_input = data
     input_id = inference.seq(test_input, word2idx)
@@ -40,13 +41,13 @@ async def message(sid, data):
 
     sen = inference.dec(y_out[0], idx2word)
     print("chatbot: " + sen)
-
     await sio.emit('message', sen, room=sid)
 
 @sio.on('disconnect')
 def disconnect(sid):
     print('disconnect ', sid)
 
+app.router.add_static('/static', 'static')
 app.router.add_get('/', index)
 
 if __name__ == '__main__':
@@ -65,6 +66,5 @@ if __name__ == '__main__':
     input_id = inference.seq('測試', word2idx)
     print('測試: ', input_id)
     print('load pickle: done')
-
 
     web.run_app(app)
