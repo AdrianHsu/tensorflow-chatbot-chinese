@@ -1,5 +1,4 @@
 *.model
-*.pkl
 __pycache__
 save*
 logs*
