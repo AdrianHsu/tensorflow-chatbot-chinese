@@ -1,6 +1,4 @@
-import argparse
 import tensorflow as tf
-import pickle
 import jieba
 
 def load_graph(frozen_graph_filename):
@@ -19,6 +17,7 @@ def load_graph(frozen_graph_filename):
             op_dict=None,
             producer_op_list=None
         )
+    print('load graph: done')
     return graph
 
 def seq(test_input, word2idx):
@@ -53,39 +52,35 @@ def dec(predict, idx2word):
         sen.append(word)
     return "".join(sen)
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--frozen_model_filename", default="frozen.pb", 
-        type=str, help="Frozen model file to import")
-    args = parser.parse_args()
-    graph = load_graph(args.frozen_model_filename)
+# if __name__ == '__main__':
+#     graph = load_graph("frozen.pb",)
 
-    x1 = graph.get_tensor_by_name('prefix/encoder_inputs:0')
-    x2 = graph.get_tensor_by_name('prefix/encoder_inputs_length:0')
-    x3 = graph.get_tensor_by_name('prefix/batch_size:0')
-    y = graph.get_tensor_by_name('prefix/decoder/decoder_pred_eval:0')
+    # x1 = graph.get_tensor_by_name('prefix/encoder_inputs:0')
+    # x2 = graph.get_tensor_by_name('prefix/encoder_inputs_length:0')
+    # x3 = graph.get_tensor_by_name('prefix/batch_size:0')
+    # y = graph.get_tensor_by_name('prefix/decoder/decoder_pred_eval:0')
     
-    word2idx = {}
-    with open('word2idx.pkl', 'rb') as handle:
-        word2idx = pickle.load(handle)
+    # word2idx = {}
+    # with open('word2idx.pkl', 'rb') as handle:
+    #     word2idx = pickle.load(handle)
 
     
-    idx2word = {}
-    with open('idx2word.pkl', 'rb') as handle:
-        idx2word = pickle.load(handle)
+    # idx2word = {}
+    # with open('idx2word.pkl', 'rb') as handle:
+    #     idx2word = pickle.load(handle)
     
-    with tf.Session(graph=graph) as sess:
-        while True:
-            test_input = input("Q: ")
-            input_id = seq(test_input, word2idx)
-            y_out = sess.run(y, feed_dict={
-                x1: [input_id],
-                x2: [len(input_id)],
-                x3: 1
-            })
+#     with tf.Session(graph=graph) as sess:
+#         while True:
+#             test_input = input("Q: ")
+#             input_id = seq(test_input, word2idx)
+#             y_out = sess.run(y, feed_dict={
+#                 x1: [input_id],
+#                 x2: [len(input_id)],
+#                 x3: 1
+#             })
 
-            sen = dec(y_out[0], idx2word)
+#             sen = dec(y_out[0], idx2word)
 
-            print("A: " + sen)
+#             print("A: " + sen)
     
-    print ("finish")
+#     print ("finish")

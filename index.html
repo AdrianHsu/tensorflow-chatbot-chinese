@@ -32,7 +32,7 @@
           return false;
         });
         socket.on('message', function(msg){
-          $('#messages').append($('<li>').text(msg));
+          $('#messages').append($('<li>').text('機器人: ' + msg));
           window.scrollTo(0, document.body.scrollHeight);
         });
       });
