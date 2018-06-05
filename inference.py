@@ -55,7 +55,7 @@ def dec(predict, idx2word):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--frozen_model_filename", default="load/frozen.pb", 
+    parser.add_argument("--frozen_model_filename", default="frozen.pb", 
         type=str, help="Frozen model file to import")
     args = parser.parse_args()
     graph = load_graph(args.frozen_model_filename)
