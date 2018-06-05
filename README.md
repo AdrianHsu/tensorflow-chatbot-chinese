@@ -48,7 +48,8 @@ And then just directly run the server file.
 $ python3 server.py
 ```
 
-You'll need `aiohttp`, `socketio` to run this. The result will be shown on `https://localhost:8080`.
+You'll need `aiohttp`, `python-socketio` to run this. The result will be shown on `https://localhost:8080`.  
+WARNING: do not install `socketio`, this is not the same as `python-socketio`!!
 
 ## Hyperparameters
 
